@@ -228,6 +228,25 @@ td.actions{text-align:right;white-space:nowrap;width:1%}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(720px,96vw);background:var(--page);z-index:46;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .drawer-h{padding:16px 20px;border-bottom:1px solid var(--line);background:var(--surface);flex:none}
 .drawer-b{overflow-y:auto;padding:18px 20px;flex:1;display:flex;flex-direction:column;gap:14px}
+
+/* ---------- Sakib chat ---------- */
+.sakib-fab{
+  display:none;position:fixed;right:20px;bottom:20px;z-index:44;width:52px;height:52px;border-radius:50%;
+  background:var(--accent);color:#fff;border:0;box-shadow:var(--shadow);cursor:pointer;font-weight:700;font-size:14px;
+  place-items:center;
+}
+.sakib-fab:hover{filter:brightness(1.07)}
+.drawer.chat{width:min(420px,94vw);z-index:47}
+#sakib-scrim{z-index:46}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:18px 20px}
+.chat-msg{max-width:85%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.45;white-space:pre-wrap}
+.chat-msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:3px}
+.chat-msg.sakib{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);border-bottom-left-radius:3px}
+.chat-msg.err{align-self:flex-start;background:color-mix(in srgb,var(--crit) 12%,var(--surface));color:var(--crit);border:1px solid var(--border)}
+.chat-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:var(--surface);flex:none}
+.chat-input-row textarea{flex:1;min-height:38px;max-height:120px;resize:none;padding:8px 10px}
+.chat-empty{margin:auto;text-align:center;color:var(--muted);font-size:13px;padding:20px}
+@media print{.sakib-fab{display:none !important}}
 .tabs{display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--line);flex:none;overflow-x:auto}
 .tab{padding:9px 12px;border:0;background:none;cursor:pointer;font-size:13px;color:var(--text-2);border-bottom:2px solid transparent;white-space:nowrap}
 .tab:hover{color:var(--text)}
@@ -365,6 +384,25 @@ div.alt2{margin-top:1px}
 </div>
 <div id="toast"></div>
 <div id="overlays"></div>
+
+<div class="drawer-scrim" id="sakib-scrim" style="display:none"></div>
+<div class="drawer chat" id="sakib-drawer" style="display:none">
+  <div class="drawer-h" style="display:flex;align-items:center;gap:10px">
+    <div style="flex:1">
+      <h3 style="font-size:15px">Sakib</h3>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Ask about your applications, deadlines, or studying abroad</div>
+    </div>
+    <button type="button" class="btn ghost sm" id="sakib-reset">New chat</button>
+    <button type="button" class="btn icon-btn ghost" id="sakib-close" title="Close">✕</button>
+  </div>
+  <div class="chat-msgs" id="sakib-msgs"><div class="chat-empty">Ask me anything about your tracker — e.g. "what's due this week?"</div></div>
+  <form class="chat-input-row" id="sakib-form">
+    <textarea id="sakib-input" placeholder="Message Sakib…" rows="1"></textarea>
+    <button type="submit" class="btn primary" id="sakib-send">Send</button>
+  </form>
+</div>
+<button type="button" class="sakib-fab" id="sakib-fab" title="Ask Sakib">S</button>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
@@ -391,6 +429,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 let currentUser = null;
+
+/* ---- Sakib assistant proxy — deployed separately, see worker/ and README ---- */
+const SAKIB_WORKER_URL = "https://sakib-assistant.sakib-ahmedsakib.workers.dev";
 
 /* ------------------------------- constants ------------------------------ */
 const STATUSES = ['Researching','Shortlisted','Preparing','Submitted','Interview','Offer','Waitlisted','Rejected','Enrolled','Withdrawn'];
@@ -1777,6 +1818,10 @@ const ACTIONS = {
     const boot = clone.querySelector('#boot-loading'); if(boot) boot.removeAttribute('style');
     const authScr = clone.querySelector('#auth-screen'); if(authScr) authScr.removeAttribute('style');
     const appEl = clone.querySelector('#app'); if(appEl) appEl.setAttribute('style', 'display:none');
+    const fab = clone.querySelector('#sakib-fab'); if(fab) fab.removeAttribute('style');
+    const sd = clone.querySelector('#sakib-drawer'); if(sd) sd.setAttribute('style', 'display:none');
+    const ss = clone.querySelector('#sakib-scrim'); if(ss) ss.setAttribute('style', 'display:none');
+    const sm = clone.querySelector('#sakib-msgs'); if(sm) sm.innerHTML = '<div class="chat-empty">Ask me anything about your tracker — e.g. "what\'s due this week?"</div>';
     clone.setAttribute('data-theme', 'light');
     download('study-abroad-tracker.html', '<!doctype html>\n' + clone.outerHTML, 'text/html');
     toast('Clean copy downloaded — it contains none of your data');
@@ -1868,6 +1913,9 @@ function showAuthScreen(){
   $('#boot-loading').style.display = 'none';
   $('#app').style.display = 'none';
   $('#auth-screen').style.display = 'flex';
+  closeSakib();
+  resetSakib();
+  $('#sakib-fab').style.display = 'none';
 }
 function showApp(){
   $('#boot-loading').style.display = 'none';
@@ -1878,7 +1926,96 @@ function showApp(){
   render();
   setSaveStatus('', state.programs.length ? 'Saved' : 'Ready');
   restoreHandle();
+  $('#sakib-fab').style.display = 'grid';
 }
+
+/* ================================= SAKIB ================================= */
+let chatHistory = [];
+let chatBusy = false;
+
+function sakibEscClose(e){ if(e.key === 'Escape') closeSakib(); }
+function openSakib(){
+  $('#sakib-scrim').style.display = 'block';
+  $('#sakib-drawer').style.display = 'flex';
+  document.addEventListener('keydown', sakibEscClose);
+  $('#sakib-input').focus();
+}
+function closeSakib(){
+  $('#sakib-scrim').style.display = 'none';
+  $('#sakib-drawer').style.display = 'none';
+  document.removeEventListener('keydown', sakibEscClose);
+}
+function resetSakib(){ chatHistory = []; renderSakibMsgs(); }
+
+function renderSakibMsgs(){
+  const el = $('#sakib-msgs');
+  if(!el) return;
+  if(!chatHistory.length){
+    el.innerHTML = '<div class="chat-empty">Ask me anything about your tracker — e.g. "what\'s due this week?"</div>';
+    return;
+  }
+  el.innerHTML = chatHistory.map(m => `<div class="chat-msg ${m.role === 'user' ? 'user' : (m.err ? 'err' : 'sakib')}">${esc(m.text)}</div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function buildSakibContext(){
+  const deadlines = collectDeadlines().slice(0, 15).map(d => ({date: d.date, title: d.title, about: d.sub, daysLeft: d.d}));
+  const programs = state.programs.map(p => {
+    const s = reqStats(p);
+    return {
+      university: p.university, program: p.program, country: p.country, degree: p.degree, tier: p.tier,
+      status: p.status, appDeadline: p.appDeadline, decisionDate: p.decisionDate,
+      tuition: p.tuition, currency: p.currency, award: p.award,
+      checklistDone: s.done, checklistTotal: s.total,
+    };
+  });
+  const scholarships = state.scholarships.map(s => ({name: s.name, status: s.status, deadline: s.deadline, amount: s.amount, currency: s.currency}));
+  return {
+    today: todayISO(), upcomingDeadlines: deadlines, programs, scholarships,
+    totalSpentBaseCurrency: totalSpent(), baseCurrency: state.settings.baseCurrency,
+  };
+}
+
+async function sendSakibMessage(text){
+  chatHistory.push({role: 'user', text});
+  renderSakibMsgs();
+  chatBusy = true;
+  $('#sakib-send').disabled = true;
+  try{
+    if(SAKIB_WORKER_URL.includes('REPLACE_ME')) throw new Error('Sakib is not set up yet — see README');
+    const idToken = await currentUser.getIdToken();
+    const res = await fetch(SAKIB_WORKER_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({idToken, message: text, context: buildSakibContext(), history: chatHistory.slice(0, -1)}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(data.error || 'Request failed');
+    chatHistory.push({role: 'sakib', text: data.reply || '…'});
+  }catch(e){
+    chatHistory.push({role: 'sakib', text: 'Sakib is unavailable right now (' + (e.message || 'error') + ').', err: true});
+  }
+  chatBusy = false;
+  $('#sakib-send').disabled = false;
+  renderSakibMsgs();
+}
+
+$('#sakib-fab').addEventListener('click', openSakib);
+$('#sakib-close').addEventListener('click', closeSakib);
+$('#sakib-scrim').addEventListener('click', closeSakib);
+$('#sakib-reset').addEventListener('click', resetSakib);
+$('#sakib-form').addEventListener('submit', e => {
+  e.preventDefault();
+  if(chatBusy) return;
+  const ta = $('#sakib-input');
+  const text = ta.value.trim();
+  if(!text) return;
+  ta.value = '';
+  sendSakibMessage(text);
+});
+$('#sakib-input').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); $('#sakib-form').requestSubmit(); }
+});
 
 /* ================================= BOOT ================================== */
 auth.onAuthStateChanged(async user => {

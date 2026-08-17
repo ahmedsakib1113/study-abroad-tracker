@@ -42,6 +42,33 @@ This app doesn't ship with a working login out of the box — you point it at yo
 
 Serving the file over `http(s)` — GitHub Pages, Netlify, or any static host — is recommended over double-clicking it from disk, for the most reliable auth behaviour.
 
+## Set up Sakib (AI assistant)
+
+Sakib is a chat assistant (the "S" button, bottom-right) that can see your own tracker data — applications, deadlines, scholarships — and answer questions like "what's due this week?". It's optional; the rest of the app works fine without it.
+
+It needs a tiny backend (in `worker/`) so its AI API key never sits inside this public HTML file:
+
+1. Get a **free** Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (no credit card needed).
+2. Create a free [Cloudflare](https://dash.cloudflare.com/sign-up) account (also no card needed for the free tier used here).
+3. Install Wrangler (Cloudflare's CLI) and log in:
+   ```
+   npm install -g wrangler
+   wrangler login
+   ```
+4. In `worker/wrangler.toml`, set `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_API_KEY` (same values as your `firebaseConfig` in `index.html`), and `ALLOWED_ORIGINS` (your GitHub Pages / hosting URL, and `http://localhost:<port>` for local testing) if they aren't already right.
+5. From inside `worker/`, add your Gemini key as a secret (never committed to git):
+   ```
+   wrangler secret put GEMINI_API_KEY
+   ```
+6. Deploy it:
+   ```
+   wrangler deploy
+   ```
+   Wrangler prints a URL like `https://sakib-assistant.<your-subdomain>.workers.dev`.
+7. Open `index.html`, search for `SAKIB_WORKER_URL`, and paste that URL in.
+
+**Privacy note:** the free Gemini API tier means Google may review prompts/responses (your applications/deadlines, sent as plain data) to improve their products — unlike their paid tier. Keep that in mind before sending anything more sensitive than study-abroad planning details.
+
 ## What's in it
 
 | Section | What it tracks |
