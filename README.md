@@ -4,7 +4,7 @@ A single-file web app for tracking university applications end to end — progra
 
 No server, no accounts, no dependencies. One HTML file.
 
-**Live version:** https://YOUR-USERNAME.github.io/study-abroad-tracker/
+**Live version:** https://ahmedsakib1113.github.io/study-abroad-tracker/
 
 ## Your data is yours
 
