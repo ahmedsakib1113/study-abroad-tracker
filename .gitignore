@@ -1,0 +1,4 @@
+# Backups and exported data — never commit these, the repo is public.
+*.json
+!package.json
+.DS_Store

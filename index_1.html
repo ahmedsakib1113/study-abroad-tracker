@@ -1,0 +1,1725 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Abroad Application Tracker</title>
+<style>
+:root{
+  --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f2f1ed; --surface-3:#eae9e4;
+  --text:#0b0b0b; --text-2:#52514e; --muted:#898781;
+  --line:#e1e0d9; --border:rgba(11,11,11,0.10); --shadow:0 1px 2px rgba(11,11,11,.06),0 8px 24px rgba(11,11,11,.08);
+  --accent:#2a78d6; --accent-soft:#cde2fb;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  --violet:#4a3aa7; --aqua:#1baf7a; --green:#008300; --orange:#eb6834; --magenta:#e87ba4;
+  --radius:10px; --radius-sm:6px;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#222221; --surface-3:#2c2c2a;
+  --text:#ffffff; --text-2:#c3c2b7; --muted:#898781;
+  --line:#2c2c2a; --border:rgba(255,255,255,0.10); --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.5);
+  --accent:#3987e5; --accent-soft:#184f95;
+  --violet:#9085e9; --aqua:#199e70; --green:#008300; --orange:#d95926; --magenta:#d55181;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--page); color:var(--text);
+  font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:-.01em}
+.mono{font-variant-numeric:tabular-nums}
+
+/* ---------- layout ---------- */
+#app{display:grid;grid-template-columns:224px 1fr;height:100vh}
+#sidebar{
+  background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0;
+}
+.brand{padding:16px 16px 12px;border-bottom:1px solid var(--line)}
+.brand .logo{display:flex;align-items:center;gap:9px}
+.brand .mark{
+  width:26px;height:26px;border-radius:7px;background:var(--accent);
+  display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:none;
+}
+.brand h1{font-size:14px;line-height:1.15}
+.brand .sub{font-size:11px;color:var(--muted);margin-top:3px}
+nav{padding:8px;overflow-y:auto;flex:1;min-height:0}
+.nav-group{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:12px 10px 5px;font-weight:650}
+.nav-item{
+  display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px;border:0;background:none;
+  border-radius:var(--radius-sm);cursor:pointer;color:var(--text-2);text-align:left;font-size:13px;
+}
+.nav-item:hover{background:var(--surface-2);color:var(--text)}
+.nav-item.active{background:var(--accent-soft);color:var(--text);font-weight:600}
+:root[data-theme="dark"] .nav-item.active{color:#fff}
+.nav-item .ico{width:16px;text-align:center;flex:none;opacity:.85}
+.nav-item .count{margin-left:auto;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.side-foot{border-top:1px solid var(--line);padding:9px 12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--good);flex:none}
+.dot.stale{background:var(--warn)}
+.dot.err{background:var(--crit)}
+
+#main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+header.top{
+  display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);
+  background:var(--surface);flex:none;
+}
+header.top h2{font-size:17px}
+header.top .desc{font-size:12px;color:var(--muted);margin-top:2px}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+#view{overflow-y:auto;padding:22px;flex:1;min-height:0}
+
+/* ---------- controls ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;
+  font-size:13px;font-weight:500;white-space:nowrap;
+}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--crit);border-color:var(--border)}
+.btn.danger:hover{background:color-mix(in srgb,var(--crit) 12%,var(--surface))}
+.btn.sm{padding:3px 8px;font-size:12px}
+.btn.ghost{border-color:transparent;background:none;color:var(--text-2)}
+.btn.ghost:hover{background:var(--surface-2);color:var(--text)}
+.icon-btn{width:30px;height:30px;padding:0;justify-content:center}
+
+input[type=text],input[type=date],input[type=number],input[type=url],input[type=email],select,textarea{
+  width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--surface);color:var(--text);outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+textarea{min-height:78px;resize:vertical;line-height:1.5}
+label.fl{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px}
+.hint{font-size:11px;color:var(--muted);margin-top:4px}
+
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.toolbar .grow{flex:1;min-width:120px}
+.search{position:relative;min-width:180px;flex:1;max-width:320px}
+.search input{padding-left:29px}
+.search::before{content:"⌕";position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px}
+select.filter{width:auto;min-width:110px}
+
+/* ---------- cards / tables ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.card-h{padding:12px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.card-h h3{font-size:13px}
+.card-h .sub{font-size:11px;color:var(--muted)}
+.card-b{padding:15px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{
+  text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  font-weight:650;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface);
+  position:sticky;top:0;z-index:1;
+}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--surface-2)}
+tr.clickable{cursor:pointer}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.actions{text-align:right;white-space:nowrap;width:1%}
+.empty{padding:44px 20px;text-align:center;color:var(--muted)}
+.empty .big{font-size:26px;margin-bottom:8px;opacity:.5}
+.empty p{margin:0 0 14px;font-size:13px}
+
+/* ---------- badges ---------- */
+.badge{
+  display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 7px;border-radius:999px;
+  background:var(--surface-2);border:1px solid var(--border);font-size:11.5px;font-weight:550;color:var(--text-2);white-space:nowrap;
+}
+.badge .bd{width:7px;height:7px;border-radius:50%;flex:none;background:var(--muted)}
+.tag{display:inline-block;padding:1px 7px;border-radius:4px;background:var(--surface-2);border:1px solid var(--border);font-size:11px;color:var(--text-2)}
+.s-researching .bd{background:var(--muted)}
+.s-shortlisted .bd{background:var(--violet)}
+.s-preparing   .bd{background:var(--warn)}
+.s-submitted   .bd{background:var(--accent)}
+.s-interview   .bd{background:var(--aqua)}
+.s-offer       .bd{background:var(--good)}
+.s-waitlisted  .bd{background:var(--serious)}
+.s-rejected    .bd{background:var(--crit)}
+.s-enrolled    .bd{background:var(--green)}
+.s-withdrawn   .bd{background:var(--muted);opacity:.6}
+.s-awarded .bd{background:var(--good)}
+.s-applied .bd{background:var(--accent)}
+.s-asked .bd{background:var(--warn)}
+.s-reminded .bd{background:var(--serious)}
+.s-declined .bd{background:var(--crit)}
+.s-notasked .bd{background:var(--muted)}
+.s-final .bd{background:var(--good)}
+.s-draft .bd{background:var(--warn)}
+.s-needed .bd{background:var(--crit)}
+
+/* ---------- stat tiles ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px}
+.tile .lab{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:650}
+.tile .val{font-size:26px;font-weight:660;margin-top:6px;letter-spacing:-.02em;line-height:1.1}
+.tile .sub{font-size:11.5px;color:var(--text-2);margin-top:4px}
+
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.grid2.tight{grid-template-columns:1.3fr 1fr;align-items:start}
+@media(max-width:1100px){.grid2.tight{grid-template-columns:1fr}}
+
+/* ---------- bar chart ---------- */
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar-row{display:grid;grid-template-columns:130px 1fr minmax(52px,auto);align-items:center;gap:10px;font-size:12.5px}
+.bar-row .bl{color:var(--text-2);display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{height:14px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;background:var(--accent);min-width:2px;transition:width .25s ease}
+.bar-row .bv{text-align:right;color:var(--text);font-variant-numeric:tabular-nums;font-weight:600}
+
+/* ---------- deadline radar ---------- */
+.dl-list{display:flex;flex-direction:column}
+.dl{display:flex;align-items:center;gap:11px;padding:10px 15px;border-bottom:1px solid var(--line)}
+.dl:last-child{border-bottom:0}
+.dl .chip{
+  min-width:52px;text-align:center;padding:4px 6px;border-radius:var(--radius-sm);font-size:11px;font-weight:650;
+  background:var(--surface-2);color:var(--text-2);font-variant-numeric:tabular-nums;flex:none;border:1px solid var(--border);
+}
+.dl.overdue .chip{background:color-mix(in srgb,var(--crit) 15%,var(--surface));color:var(--crit);border-color:transparent}
+.dl.soon .chip{background:color-mix(in srgb,var(--warn) 22%,var(--surface));color:var(--text);border-color:transparent}
+.dl .txt{min-width:0;flex:1}
+.dl .t1{font-size:13px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl .t2{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl .when{font-size:11.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* ---------- progress ---------- */
+.prog{display:flex;align-items:center;gap:8px;min-width:104px}
+.prog .track{flex:1;height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;display:block}
+.prog .fill{display:block;height:6px;background:var(--accent);border-radius:3px}
+.prog .fill.done{background:var(--good)}
+.prog .pct{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;width:31px;text-align:right}
+
+/* ---------- kanban ---------- */
+.board{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;align-items:flex-start}
+.col{background:var(--surface-2);border-radius:var(--radius);width:252px;flex:none;border:1px solid var(--line)}
+.col-h{padding:10px 12px;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:650;border-bottom:1px solid var(--line)}
+.col-h .n{margin-left:auto;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.col-b{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:56px}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 11px;cursor:grab;box-shadow:0 1px 1px rgba(0,0,0,.03)}
+.kcard:hover{border-color:var(--accent)}
+.kcard.dragging{opacity:.4}
+.kcard .u{font-size:13px;font-weight:600;line-height:1.3}
+.kcard .p{font-size:11.5px;color:var(--text-2);margin-top:2px}
+.kcard .m{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:var(--muted)}
+.col.drop-target{outline:2px dashed var(--accent);outline-offset:-2px}
+
+/* ---------- modal / drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(11,11,11,.42);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);width:100%;max-width:660px;border:1px solid var(--line)}
+.modal.wide{max-width:900px}
+.modal-h{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.modal-h h3{font-size:15px}
+.modal-b{padding:20px}
+.modal-f{padding:13px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:var(--surface-2);border-radius:0 0 12px 12px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fgrid .full{grid-column:1/-1}
+@media(max-width:640px){.fgrid{grid-template-columns:1fr}}
+
+.drawer-scrim{position:fixed;inset:0;background:rgba(11,11,11,.42);z-index:45}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(720px,96vw);background:var(--page);z-index:46;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.drawer-h{padding:16px 20px;border-bottom:1px solid var(--line);background:var(--surface);flex:none}
+.drawer-b{overflow-y:auto;padding:18px 20px;flex:1;display:flex;flex-direction:column;gap:14px}
+.tabs{display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--line);flex:none;overflow-x:auto}
+.tab{padding:9px 12px;border:0;background:none;cursor:pointer;font-size:13px;color:var(--text-2);border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+
+.kv{display:grid;grid-template-columns:140px 1fr;gap:7px 14px;font-size:13px}
+.kv dt{color:var(--muted);font-size:12px}
+.kv dd{margin:0;color:var(--text)}
+
+/* ---------- checklist ---------- */
+.chk{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:0}
+.chk input[type=checkbox]{width:16px;height:16px;margin-top:1px;flex:none;accent-color:var(--accent);cursor:pointer}
+.chk .l{flex:1;min-width:0}
+.chk .l .t{font-size:13px}
+.chk.done .l .t{text-decoration:line-through;color:var(--muted)}
+.chk .l .n{font-size:11.5px;color:var(--muted);margin-top:2px}
+.chk .due{font-size:11.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.chk .due.over{color:var(--crit);font-weight:600}
+
+.row-add{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface-2)}
+.row-add input[type=text]{flex:1}
+.row-add input[type=date]{width:145px}
+
+ul.plain{margin:0;padding-left:18px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.muted{color:var(--muted)}
+.alt2{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+div.alt2{margin-top:1px}
+.small{font-size:12px}
+.right{text-align:right}
+.nowrap{white-space:nowrap}
+.sep{height:1px;background:var(--line);margin:2px 0}
+.pill-row{display:flex;flex-wrap:wrap;gap:6px}
+.link-out{font-size:12px;text-decoration:none}
+.link-out:hover{text-decoration:underline}
+
+#toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--text);color:var(--page);padding:9px 16px;border-radius:999px;font-size:13px;
+  z-index:100;transition:transform .22s ease;box-shadow:var(--shadow);pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:820px){
+  #app{grid-template-columns:1fr}
+  #sidebar{position:fixed;left:0;top:0;bottom:0;width:224px;z-index:40;transform:translateX(-100%);transition:transform .2s}
+  #sidebar.open{transform:none}
+  #menu-btn{display:inline-flex !important}
+  #view{padding:16px}
+  header.top{padding:12px 16px}
+}
+#menu-btn{display:none}
+@media print{#sidebar,header.top .top-actions,.toolbar{display:none}#app{grid-template-columns:1fr}#view{overflow:visible}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo">
+        <div class="mark">SA</div>
+        <div>
+          <h1>Application Tracker</h1>
+          <div class="sub" id="brand-sub">Study abroad</div>
+        </div>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <span class="dot" id="save-dot"></span>
+      <span id="save-text">Saved</span>
+    </div>
+  </aside>
+
+  <div id="main">
+    <header class="top">
+      <button class="btn icon-btn" id="menu-btn" title="Menu">☰</button>
+      <div>
+        <h2 id="page-title">Dashboard</h2>
+        <div class="desc" id="page-desc"></div>
+      </div>
+      <div class="top-actions">
+        <button class="btn icon-btn" id="theme-btn" title="Toggle light / dark">◐</button>
+        <button class="btn" id="page-action" style="display:none"></button>
+      </div>
+    </header>
+    <div id="view"></div>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="overlays"></div>
+<script>
+/* =========================================================================
+   Study Abroad Application Tracker — single file, no server, no accounts.
+   Data lives in this browser (localStorage) and, optionally, in a .json file
+   on your disk that the app writes to directly (Chrome/Edge).
+   ========================================================================= */
+
+/* ------------------------------- constants ------------------------------ */
+const STATUSES = ['Researching','Shortlisted','Preparing','Submitted','Interview','Offer','Waitlisted','Rejected','Enrolled','Withdrawn'];
+const OPEN_STATUSES = ['Researching','Shortlisted','Preparing','Submitted','Interview'];
+const DEGREES = ['Bachelor’s','Master’s','MBA','PhD','Diploma','Exchange','Foundation','Other'];
+const TIERS = ['Reach','Target','Safety'];
+const DOC_TYPES = ['Transcript','Statement of Purpose','Personal Statement','CV / Resume','Recommendation Letter','Passport','Test Score Report','Bank / Financial','Degree Certificate','Portfolio','Research Proposal','Experience Letter','Other'];
+const DOC_STATUS = ['Needed','Draft','Final'];
+const REQ_STATUS = ['Not asked','Asked','Reminded','Submitted','Declined'];
+const SCH_STATUS = ['Researching','Applied','Awarded','Rejected'];
+const EXPENSE_CATS = ['Application fee','Test fee','Document / attestation','Translation','Courier','Credential evaluation','Visa fee','Tuition deposit','Health insurance','Travel','Other'];
+const TEST_NAMES = ['IELTS','TOEFL iBT','Duolingo English Test','PTE Academic','GRE General','GMAT','SAT','ACT','GRE Subject','Other'];
+const VISA_STATUS = ['Not started','Documents','Fee paid','Appointment booked','Biometrics done','Interview done','Approved','Refused'];
+const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','JPY','SGD','CHF','SEK','NZD','BDT','INR','PKR','NGN','CNY','KRW','MYR','AED','TRY'];
+const DEFAULT_RATES = {USD:1,EUR:1.09,GBP:1.27,CAD:0.73,AUD:0.66,JPY:0.0064,SGD:0.74,CHF:1.12,SEK:0.095,NZD:0.60,BDT:0.0082,INR:0.0116,PKR:0.0036,NGN:0.00065,CNY:0.138,KRW:0.00072,MYR:0.225,AED:0.272,TRY:0.029};
+
+const REQ_TEMPLATE = [
+  'Academic transcripts (all institutions)','Degree certificate','Statement of Purpose',
+  'CV / Resume','Recommendation letter 1','Recommendation letter 2',
+  'English test score sent to university','Passport copy','Proof of funds / bank statement',
+  'Application fee paid','Online application form submitted'
+];
+const VISA_STEPS = ['Acceptance letter received','Tuition deposit paid','I-20 / CAS / CoE issued','Financial proof ready','Visa fee paid','Application form submitted','Appointment booked','Biometrics completed','Interview completed','Medical exam (if required)','Passport returned with visa'];
+
+/* -------------------------------- helpers ------------------------------- */
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const slug = s => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+function daysUntil(iso){
+  if(!iso) return null;
+  const d = new Date(iso + 'T00:00:00'), t = new Date(todayISO() + 'T00:00:00');
+  return Math.round((d - t) / 86400000);
+}
+function fmtDate(iso){
+  if(!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return esc(iso);
+  return d.toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+}
+function relDays(n){
+  if(n === null) return '';
+  if(n === 0) return 'today';
+  if(n === 1) return 'tomorrow';
+  if(n < 0) return Math.abs(n) + 'd late';
+  return n + 'd';
+}
+function toBase(amount, cur){
+  const r = state.settings.rates || DEFAULT_RATES;
+  const base = state.settings.baseCurrency || 'USD';
+  const a = Number(amount) || 0;
+  const from = r[cur] ?? DEFAULT_RATES[cur] ?? 1;
+  const to = r[base] ?? DEFAULT_RATES[base] ?? 1;
+  return a * from / to;
+}
+/* South Asian currencies read better with lakh/crore grouping and a real symbol */
+const CUR_LOCALE = {BDT:'en-IN', INR:'en-IN', PKR:'en-IN', NPR:'en-IN', LKR:'en-IN'};
+const CUR_SYMBOL = {BDT:'৳'};
+function money(n, cur){
+  const c = cur || state.settings.baseCurrency || 'USD';
+  try{
+    let s = new Intl.NumberFormat(CUR_LOCALE[c] || undefined, {style:'currency', currency:c, maximumFractionDigits:0}).format(Number(n) || 0);
+    if(CUR_SYMBOL[c]) s = s.replace(c, CUR_SYMBOL[c]).replace(/\s/, '');
+    return s;
+  }catch(e){ return c + ' ' + Math.round(Number(n) || 0).toLocaleString(); }
+}
+/* convert between any two currencies using the USD-per-unit rate table */
+function convert(amount, from, to){
+  const r = state.settings.rates || DEFAULT_RATES;
+  const f = r[from] ?? DEFAULT_RATES[from] ?? 1;
+  const t = r[to] ?? DEFAULT_RATES[to] ?? 1;
+  return (Number(amount) || 0) * f / t;
+}
+const homeCur = () => state.settings.homeCurrency || 'BDT';
+/** just the "≈ ৳x" part, or '' when there is nothing to convert */
+function altText(n, cur){
+  const c = cur || state.settings.baseCurrency || 'USD', h = homeCur();
+  if(state.settings.dualCurrency === false || h === c) return '';
+  return '≈ ' + money(convert(n, c, h), h);
+}
+/**
+ * Money with the home-currency equivalent beside it.
+ * money2(96000,'AUD')  ->  "A$96,000  ≈ ৳7,672,000"
+ * layout: 'inline' (default) or 'block' (second line — use inside table cells)
+ */
+function money2(n, cur, layout){
+  if(n === '' || n === null || n === undefined || isNaN(Number(n))) return '<span class="muted">—</span>';
+  const c = cur || state.settings.baseCurrency || 'USD';
+  const main = `<span class="nowrap">${money(n, c)}</span>`;
+  const h = homeCur();
+  if(state.settings.dualCurrency === false || h === c) return main;
+  const alt = `<span class="alt2">≈ ${money(convert(n, c, h), h)}</span>`;
+  return layout === 'block' ? `${main}<div class="alt2">≈ ${money(convert(n, c, h), h)}</div>` : `${main} ${alt}`;
+}
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function badge(status){
+  return `<span class="badge s-${slug(status)}"><span class="bd"></span>${esc(status || '—')}</span>`;
+}
+function progressBar(done, total){
+  const pct = total ? Math.round(done / total * 100) : 0;
+  return `<span class="prog"><span class="track"><span class="fill${pct===100?' done':''}" style="width:${pct}%"></span></span><span class="pct">${pct}%</span></span>`;
+}
+function download(name, text, type){
+  const b = new Blob([text], {type: type || 'application/json'});
+  const u = URL.createObjectURL(b), a = document.createElement('a');
+  a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+}
+function csvCell(v){
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+/* --------------------------------- state -------------------------------- */
+const KEY = 'sa_tracker_v1';
+const blank = () => ({
+  version: 1,
+  settings: {baseCurrency:'USD', homeCurrency:'BDT', dualCurrency:true, rates: {...DEFAULT_RATES}, theme:'light', owner:'', intake:''},
+  programs: [], documents: [], recommenders: [], tests: [],
+  scholarships: [], expenses: [], visas: [], contacts: []
+});
+let state = blank();
+let fileHandle = null;
+let dirty = false;
+
+function setSaveStatus(kind, text){
+  const d = $('#save-dot'); d.className = 'dot' + (kind ? ' ' + kind : '');
+  $('#save-text').textContent = text;
+}
+
+async function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(state));
+    dirty = false;
+    setSaveStatus('', fileHandle ? 'Saved → file' : 'Saved locally');
+  }catch(e){
+    setSaveStatus('err', 'Browser storage failed — export!');
+  }
+  if(fileHandle){
+    try{
+      const w = await fileHandle.createWritable();
+      await w.write(JSON.stringify(state, null, 2));
+      await w.close();
+    }catch(e){ setSaveStatus('stale', 'File write failed'); }
+  }
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      state = Object.assign(blank(), parsed);
+      state.settings = Object.assign(blank().settings, parsed.settings || {});
+      state.settings.rates = Object.assign({...DEFAULT_RATES}, state.settings.rates || {});
+    }
+  }catch(e){ console.warn('Could not read saved data', e); }
+}
+
+/* file-handle persistence so "link a data file" survives reloads */
+function idb(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('sa_tracker_fs', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('h');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function idbSet(v){ try{ const db = await idb(); const tx = db.transaction('h','readwrite'); tx.objectStore('h').put(v,'file'); }catch(e){} }
+async function idbGet(){ try{ const db = await idb(); return await new Promise(r => { const q = db.transaction('h').objectStore('h').get('file'); q.onsuccess = () => r(q.result); q.onerror = () => r(null); }); }catch(e){ return null; } }
+
+async function linkFile(){
+  if(!window.showSaveFilePicker){ toast('Your browser does not support direct file saving — use Export instead'); return; }
+  try{
+    fileHandle = await window.showSaveFilePicker({
+      suggestedName: 'study-abroad-data.json',
+      types: [{description:'JSON', accept:{'application/json':['.json']}}]
+    });
+    await idbSet(fileHandle); await save(); toast('Linked — every change now writes to that file');
+    render();
+  }catch(e){}
+}
+async function openFileLink(){
+  if(!window.showOpenFilePicker){ return importPrompt(); }
+  try{
+    const [h] = await window.showOpenFilePicker({types:[{description:'JSON', accept:{'application/json':['.json']}}]});
+    const f = await h.getFile(); const data = JSON.parse(await f.text());
+    if(!data || !Array.isArray(data.programs)) throw new Error('not a tracker file');
+    state = Object.assign(blank(), data);
+    state.settings = Object.assign(blank().settings, data.settings || {});
+    fileHandle = h; await idbSet(h); await save();
+    toast('Loaded and linked'); applyTheme(); render();
+  }catch(e){ if(e && e.name !== 'AbortError') toast('Could not open that file'); }
+}
+async function restoreHandle(){
+  const h = await idbGet(); if(!h) return;
+  try{
+    const perm = await h.queryPermission({mode:'readwrite'});
+    if(perm === 'granted'){ fileHandle = h; setSaveStatus('', 'Saved → file'); }
+    else setSaveStatus('stale', 'File link needs re-approval');
+  }catch(e){}
+}
+
+function exportJSON(){
+  download('study-abroad-backup-' + todayISO() + '.json', JSON.stringify(state, null, 2));
+  toast('Backup downloaded');
+}
+function importPrompt(){
+  const i = document.createElement('input'); i.type = 'file'; i.accept = '.json,application/json';
+  i.onchange = () => {
+    const f = i.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try{
+        const data = JSON.parse(r.result);
+        if(!data || !Array.isArray(data.programs)) throw new Error('bad file');
+        if(!confirm('Replace everything currently in the tracker with this file?')) return;
+        state = Object.assign(blank(), data);
+        state.settings = Object.assign(blank().settings, data.settings || {});
+        save(); applyTheme(); render(); toast('Data imported');
+      }catch(e){ alert('That does not look like a tracker backup file.'); }
+    };
+    r.readAsText(f);
+  };
+  i.click();
+}
+
+/* -------------------------------- theming ------------------------------- */
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', state.settings.theme === 'dark' ? 'dark' : 'light');
+}
+function toggleTheme(){
+  state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(); save();
+}
+
+/* ---------------------------- generic UI bits --------------------------- */
+function closeOverlay(){ $('#overlays').innerHTML = ''; document.removeEventListener('keydown', escClose); }
+function escClose(e){ if(e.key === 'Escape') closeOverlay(); }
+
+/**
+ * Schema-driven record editor.
+ * fields: [{key,label,type,options,placeholder,hint,full,min,step}]
+ */
+function openForm(opts){
+  const {title, fields, record = {}, onSave, onDelete, wide} = opts;
+  const body = fields.map(f => {
+    const v = record[f.key] ?? f.default ?? '';
+    let ctrl = '';
+    if(f.type === 'textarea') ctrl = `<textarea data-k="${f.key}" placeholder="${esc(f.placeholder||'')}">${esc(v)}</textarea>`;
+    else if(f.type === 'select') ctrl = `<select data-k="${f.key}">${(f.allowEmpty!==false?`<option value="">—</option>`:'')}${f.options.map(o => {
+        const val = typeof o === 'string' ? o : o.value, lab = typeof o === 'string' ? o : o.label;
+        return `<option value="${esc(val)}"${String(v)===String(val)?' selected':''}>${esc(lab)}</option>`;
+      }).join('')}</select>`;
+    else if(f.type === 'checks') ctrl = `<div class="pill-row" data-multi="${f.key}">${f.options.map(o => {
+        const on = Array.isArray(v) && v.includes(o.value);
+        return `<label class="badge" style="cursor:pointer"><input type="checkbox" value="${esc(o.value)}" ${on?'checked':''} style="margin:0">${esc(o.label)}</label>`;
+      }).join('') || '<span class="muted small">Nothing to link yet.</span>'}</div>`;
+    else ctrl = `<input type="${f.type||'text'}" data-k="${f.key}" value="${esc(v)}" placeholder="${esc(f.placeholder||'')}"${f.step?` step="${f.step}"`:''}${f.min!==undefined?` min="${f.min}"`:''}>`;
+    return `<div class="${f.full?'full':''}"><label class="fl">${esc(f.label)}</label>${ctrl}${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}</div>`;
+  }).join('');
+
+  $('#overlays').innerHTML = `
+    <div class="scrim" data-close>
+      <div class="modal${wide?' wide':''}">
+        <div class="modal-h"><h3>${esc(title)}</h3></div>
+        <div class="modal-b"><div class="fgrid">${body}</div></div>
+        <div class="modal-f">
+          ${onDelete ? '<button class="btn danger" data-del style="margin-right:auto">Delete</button>' : ''}
+          <button class="btn" data-close>Cancel</button>
+          <button class="btn primary" data-ok>Save</button>
+        </div>
+      </div>
+    </div>`;
+  const root = $('#overlays');
+  root.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', e => { if(e.target === el) closeOverlay(); }));
+  root.querySelector('[data-ok]').addEventListener('click', () => {
+    const out = {...record};
+    fields.forEach(f => {
+      if(f.type === 'checks'){
+        out[f.key] = [...root.querySelectorAll(`[data-multi="${f.key}"] input:checked`)].map(i => i.value);
+      }else{
+        const el = root.querySelector(`[data-k="${f.key}"]`);
+        let val = el ? el.value : '';
+        if(f.type === 'number') val = val === '' ? '' : Number(val);
+        out[f.key] = val;
+      }
+    });
+    closeOverlay(); onSave(out);
+  });
+  if(onDelete) root.querySelector('[data-del]').addEventListener('click', () => {
+    if(confirm('Delete this permanently?')){ closeOverlay(); onDelete(); }
+  });
+  document.addEventListener('keydown', escClose);
+  const first = root.querySelector('input,select,textarea'); if(first) first.focus();
+}
+
+function emptyState(icon, text, btnLabel, onClick){
+  const id = 'e' + uid();
+  setTimeout(() => { const b = document.getElementById(id); if(b) b.addEventListener('click', onClick); }, 0);
+  return `<div class="empty"><div class="big">${icon}</div><p>${esc(text)}</p>${btnLabel?`<button class="btn primary" id="${id}">${esc(btnLabel)}</button>`:''}</div>`;
+}
+
+/** Simple sortable/filterable table. cols: [{h,cls,get(row)}] */
+function tableHTML(cols, rows, rowAttr){
+  if(!rows.length) return '';
+  return `<div class="card"><table>
+    <thead><tr>${cols.map(c => `<th class="${c.cls||''}">${esc(c.h)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r => `<tr class="clickable" ${rowAttr ? rowAttr(r) : ''}>${cols.map(c => `<td class="${c.cls||''}">${c.get(r)}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+/* --------------------------- derived / lookups -------------------------- */
+const prog = id => state.programs.find(p => p.id === id);
+const progName = id => { const p = prog(id); return p ? p.university : ''; };
+function progLabel(p){ return p.university + (p.program ? ' — ' + p.program : ''); }
+function reqStats(p){
+  const r = p.reqs || [];
+  return {done: r.filter(x => x.done).length, total: r.length};
+}
+function programOptions(){ return state.programs.map(p => ({value:p.id, label:progLabel(p)})); }
+
+function collectDeadlines(){
+  const out = [];
+  const push = (date, title, sub, view, id) => { if(date) out.push({date, title, sub, view, id, d: daysUntil(date)}); };
+  state.programs.forEach(p => {
+    if(['Rejected','Withdrawn','Enrolled'].includes(p.status)) return;
+    if(!['Submitted','Interview','Offer'].includes(p.status)) push(p.appDeadline, 'Application deadline', progLabel(p), 'applications', p.id);
+    push(p.scholarshipDeadline, 'Scholarship deadline', progLabel(p), 'applications', p.id);
+    (p.reqs || []).forEach(r => { if(!r.done) push(r.due, r.label, progLabel(p), 'applications', p.id); });
+  });
+  state.scholarships.forEach(s => { if(s.status === 'Researching' || s.status === 'Applied') push(s.deadline, s.name, s.programId ? progName(s.programId) : 'Scholarship', 'scholarships', s.id); });
+  state.recommenders.forEach(r => (r.requests || []).forEach(q => {
+    if(q.status !== 'Submitted' && q.status !== 'Declined') push(q.deadline, 'LOR from ' + r.name, progName(q.programId), 'recommenders', r.id);
+  }));
+  state.tests.forEach(t => push(t.expiry, t.name + ' score expires', 'Valid until', 'tests', t.id));
+  state.visas.forEach(v => push(v.appointment, 'Visa appointment', v.country || '', 'visa', v.id));
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+/* ================================ ROUTER ================================= */
+const NAV = [
+  {group:'Overview', items:[
+    {id:'dashboard', label:'Dashboard', icon:'▦'},
+    {id:'deadlines', label:'Deadlines', icon:'◔'},
+  ]},
+  {group:'Applications', items:[
+    {id:'applications', label:'Applications', icon:'▤', count:() => state.programs.length},
+    {id:'board', label:'Pipeline board', icon:'▥'},
+    {id:'compare', label:'Compare offers', icon:'⇄'},
+  ]},
+  {group:'Materials', items:[
+    {id:'documents', label:'Documents', icon:'▣', count:() => state.documents.length},
+    {id:'recommenders', label:'Recommenders', icon:'✎', count:() => state.recommenders.length},
+    {id:'tests', label:'Test scores', icon:'◈', count:() => state.tests.length},
+  ]},
+  {group:'Money', items:[
+    {id:'scholarships', label:'Scholarships', icon:'★', count:() => state.scholarships.length},
+    {id:'expenses', label:'Expenses', icon:'⛁', count:() => state.expenses.length},
+  ]},
+  {group:'After the offer', items:[
+    {id:'visa', label:'Visa tracker', icon:'⎘', count:() => state.visas.length},
+    {id:'contacts', label:'Contacts', icon:'☏', count:() => state.contacts.length},
+  ]},
+  {group:'', items:[
+    {id:'data', label:'Data & settings', icon:'⚙'},
+  ]},
+];
+
+const PAGES = {
+  dashboard:    {title:'Dashboard',        desc:'Everything at a glance'},
+  deadlines:    {title:'Deadlines',        desc:'Every dated item across the tracker, soonest first'},
+  applications: {title:'Applications',     desc:'Every university and programme you are tracking', action:{label:'+ Add application', act:'add-program'}},
+  board:        {title:'Pipeline board',   desc:'Drag a card to change its stage', action:{label:'+ Add application', act:'add-program'}},
+  compare:      {title:'Compare offers',   desc:'Side-by-side cost and outcome comparison'},
+  documents:    {title:'Documents',        desc:'Versions and where each file lives', action:{label:'+ Add document', act:'add-document'}},
+  recommenders: {title:'Recommenders',     desc:'Who is writing what, and whether it has landed', action:{label:'+ Add recommender', act:'add-recommender'}},
+  tests:        {title:'Test scores',      desc:'Scores, validity windows, and which universities received reports', action:{label:'+ Add test', act:'add-test'}},
+  scholarships: {title:'Scholarships',     desc:'Funding you are chasing, with its own deadlines', action:{label:'+ Add scholarship', act:'add-scholarship'}},
+  expenses:     {title:'Expenses',         desc:'What this process is actually costing you', action:{label:'+ Add expense', act:'add-expense'}},
+  visa:         {title:'Visa tracker',     desc:'Post-acceptance steps, per country', action:{label:'+ Add visa case', act:'add-visa'}},
+  contacts:     {title:'Contacts',         desc:'Admissions officers, agents, seniors, alumni', action:{label:'+ Add contact', act:'add-contact'}},
+  data:         {title:'Data & settings',  desc:'Backups, currency, and where your data lives'},
+};
+
+let route = 'dashboard';
+let q = '';
+let filters = {};
+
+function go(v){ route = v; q = ''; filters = {}; $('#view').scrollTop = 0; render(); if(window.innerWidth <= 820) $('#sidebar').classList.remove('open'); }
+
+function renderNav(){
+  $('#nav').innerHTML = NAV.map(g => `
+    ${g.group ? `<div class="nav-group">${esc(g.group)}</div>` : '<div style="height:10px"></div>'}
+    ${g.items.map(i => {
+      const n = i.count ? i.count() : null;
+      return `<button class="nav-item${route === i.id ? ' active' : ''}" data-go="${i.id}">
+        <span class="ico">${i.icon}</span><span>${esc(i.label)}</span>${n ? `<span class="count">${n}</span>` : ''}
+      </button>`;
+    }).join('')}`).join('');
+  $('#nav').querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+}
+
+function render(){
+  renderNav();
+  const p = PAGES[route];
+  $('#page-title').textContent = p.title;
+  $('#page-desc').textContent = p.desc;
+  const ab = $('#page-action');
+  if(p.action){ ab.style.display = ''; ab.textContent = p.action.label; ab.className = 'btn primary'; ab.onclick = () => ACTIONS[p.action.act](); }
+  else ab.style.display = 'none';
+  $('#brand-sub').textContent = state.settings.intake || 'Study abroad';
+  $('#view').innerHTML = VIEW[route]();
+  if(AFTER[route]) AFTER[route]();
+}
+
+/* ============================== DASHBOARD ================================ */
+function totalSpent(){ return state.expenses.reduce((s, e) => s + toBase(e.amount, e.currency), 0); }
+function barChart(rows, opts = {}){
+  const max = Math.max(1, ...rows.map(r => r.value));
+  if(!rows.length) return '<div class="muted small">Nothing to show yet.</div>';
+  return `<div class="bars">${rows.map(r => `
+    <div class="bar-row">
+      <div class="bl" title="${esc(r.label)}">${r.dot ? `<span class="bd" style="width:7px;height:7px;border-radius:50%;background:${r.dot};display:inline-block;flex:none"></span>` : ''}${esc(r.label)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(r.value / max * 100)}%${r.color ? ';background:' + r.color : ''}"></div></div>
+      <div class="bv">${opts.fmt ? opts.fmt(r.value) : r.value}</div>
+    </div>`).join('')}</div>`;
+}
+
+VIEW = {};
+AFTER = {};
+
+VIEW.dashboard = () => {
+  if(!state.programs.length && !state.documents.length){
+    return `<div class="card">${emptyState('▦',
+      'Nothing tracked yet. Start by adding the first university you are applying to — or load the sample data to see how everything fits together.',
+      '+ Add your first application', () => ACTIONS['add-program']())}
+      <div class="card-b" style="text-align:center;border-top:1px solid var(--line)">
+        <button class="btn" data-act="seed">Load sample data</button>
+        <button class="btn" data-act="import">Import a backup</button>
+      </div></div>`;
+  }
+  const ps = state.programs;
+  const submitted = ps.filter(p => ['Submitted','Interview','Offer','Waitlisted','Rejected','Enrolled'].includes(p.status)).length;
+  const offers = ps.filter(p => ['Offer','Enrolled'].includes(p.status)).length;
+  const decided = ps.filter(p => ['Offer','Rejected','Enrolled','Waitlisted'].includes(p.status)).length;
+  const dls = collectDeadlines();
+  const next = dls.find(d => d.d >= 0);
+  const overdue = dls.filter(d => d.d < 0).length;
+  const openReq = ps.filter(p => OPEN_STATUSES.includes(p.status));
+  const totReq = openReq.reduce((s, p) => s + reqStats(p).total, 0);
+  const doneReq = openReq.reduce((s, p) => s + reqStats(p).done, 0);
+
+  const statusRows = STATUSES.map(s => ({label:s, value:ps.filter(p => p.status === s).length})).filter(r => r.value);
+  const spendRows = Object.entries(state.expenses.reduce((m, e) => {
+    const k = e.category || 'Other'; m[k] = (m[k] || 0) + toBase(e.amount, e.currency); return m;
+  }, {})).map(([label, value]) => ({label, value})).sort((a, b) => b.value - a.value);
+  const readiness = openReq.map(p => {
+    const {done, total} = reqStats(p);
+    return {label: p.university, value: total ? Math.round(done / total * 100) : 0};
+  }).sort((a, b) => a.value - b.value).slice(0, 8);
+
+  return `
+  <div class="tiles">
+    <div class="tile"><div class="lab">Applications</div><div class="val mono">${ps.length}</div>
+      <div class="sub">${ps.filter(p => OPEN_STATUSES.includes(p.status)).length} still in progress</div></div>
+    <div class="tile"><div class="lab">Submitted</div><div class="val mono">${submitted}</div>
+      <div class="sub">${ps.length ? Math.round(submitted / ps.length * 100) : 0}% of your list</div></div>
+    <div class="tile"><div class="lab">Offers</div><div class="val mono">${offers}</div>
+      <div class="sub">${decided ? Math.round(offers / decided * 100) + '% of decisions so far' : 'No decisions yet'}</div></div>
+    <div class="tile"><div class="lab">Spent so far</div><div class="val mono">${money(totalSpent())}</div>
+      <div class="sub">${altText(totalSpent()) ? altText(totalSpent()) + ' · ' : ''}${state.expenses.length} entries</div></div>
+    <div class="tile"><div class="lab">Next deadline</div>
+      <div class="val mono">${next ? (next.d === 0 ? 'Today' : next.d + 'd') : '—'}</div>
+      <div class="sub">${next ? esc(next.title) : 'Nothing scheduled'}${overdue ? ` · <span style="color:var(--crit);font-weight:600">${overdue} overdue</span>` : ''}</div></div>
+  </div>
+
+  <div class="grid2 tight">
+    <div class="card">
+      <div class="card-h"><h3>Upcoming deadlines</h3><span class="sub">${dls.filter(d => d.d <= 60).length} within 60 days${overdue ? ` · ${overdue} overdue` : ''}</span>
+        <button class="btn sm ghost" style="margin-left:auto" data-go2="deadlines">See all →</button></div>
+      ${deadlineList(dls.slice(0, 10))}
+    </div>
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h3>Pipeline</h3><span class="sub">applications by stage</span></div>
+        <div class="card-b">${barChart(statusRows)}</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Document readiness</h3><span class="sub">${doneReq}/${totReq} items done on open applications</span></div>
+        <div class="card-b">${barChart(readiness, {fmt: v => v + '%'})}</div>
+      </div>
+      ${spendRows.length ? `<div class="card">
+        <div class="card-h"><h3>Spend by category</h3><span class="sub">in ${esc(state.settings.baseCurrency)}${state.settings.dualCurrency !== false && homeCur() !== state.settings.baseCurrency ? ' and ' + esc(homeCur()) : ''}</span></div>
+        <div class="card-b">${barChart(spendRows, {fmt: v => money2(v, state.settings.baseCurrency, 'block')})}</div>
+      </div>` : ''}
+    </div>
+  </div>`;
+};
+
+function deadlineList(items){
+  if(!items.length) return '<div class="empty" style="padding:28px"><p>Nothing due. Enjoy it while it lasts.</p></div>';
+  return `<div class="dl-list">${items.map(i => `
+    <div class="dl ${i.d < 0 ? 'overdue' : i.d <= 14 ? 'soon' : ''}" data-go2="${i.view}">
+      <div class="chip">${i.d < 0 ? Math.abs(i.d) + 'd&nbsp;late' : i.d === 0 ? 'today' : i.d + 'd'}</div>
+      <div class="txt"><div class="t1">${esc(i.title)}</div><div class="t2">${esc(i.sub || '')}</div></div>
+      <div class="when">${fmtDate(i.date)}</div>
+    </div>`).join('')}</div>`;
+}
+
+VIEW.deadlines = () => {
+  const all = collectDeadlines();
+  return `<div class="toolbar">
+      <div class="search"><input type="text" id="q" placeholder="Filter deadlines…" value="${esc(q)}"></div>
+      <select class="filter" id="f-window">
+        <option value="">All upcoming</option><option value="30">Next 30 days</option>
+        <option value="60">Next 60 days</option><option value="90">Next 90 days</option>
+        <option value="past">Overdue only</option>
+      </select>
+    </div>
+    <div class="card">${deadlineList(all.filter(i => {
+      if(q && !((i.title + ' ' + i.sub).toLowerCase().includes(q.toLowerCase()))) return false;
+      const w = filters.window;
+      if(w === 'past') return i.d < 0;
+      if(w) return i.d >= 0 && i.d <= Number(w);
+      return true;
+    }))}</div>`;
+};
+AFTER.deadlines = () => {
+  $('#q').addEventListener('input', e => { q = e.target.value; const s = $('#view').scrollTop; render(); $('#view').scrollTop = s; $('#q').focus(); });
+  const w = $('#f-window'); w.value = filters.window || '';
+  w.addEventListener('change', e => { filters.window = e.target.value; render(); });
+};
+
+/* ============================ APPLICATIONS =============================== */
+function matchProgram(p){
+  if(filters.status && p.status !== filters.status) return false;
+  if(filters.country && p.country !== filters.country) return false;
+  if(!q) return true;
+  const hay = [p.university, p.program, p.country, p.city, p.intake, p.degree, p.notes].join(' ').toLowerCase();
+  return hay.includes(q.toLowerCase());
+}
+
+VIEW.applications = () => {
+  if(!state.programs.length) return `<div class="card">${emptyState('▤', 'No applications yet.', '+ Add your first application', () => ACTIONS['add-program']())}</div>`;
+  const countries = [...new Set(state.programs.map(p => p.country).filter(Boolean))].sort();
+  const rows = state.programs.filter(matchProgram).sort((a, b) => (a.appDeadline || '9999').localeCompare(b.appDeadline || '9999'));
+  const cols = [
+    {h:'University / Programme', get: p => `<div style="font-weight:600">${esc(p.university)}</div><div class="small muted">${esc(p.program || '—')}</div>`},
+    {h:'Where', get: p => `<div>${esc(p.country || '—')}</div><div class="small muted">${esc(p.city || '')}</div>`},
+    {h:'Intake', get: p => `<div>${esc(p.intake || '—')}</div><div class="small muted">${esc(p.degree || '')}</div>`},
+    {h:'Tier', get: p => p.tier ? `<span class="tag">${esc(p.tier)}</span>` : '<span class="muted">—</span>'},
+    {h:'Status', get: p => badge(p.status)},
+    {h:'Deadline', get: p => {
+      const d = daysUntil(p.appDeadline);
+      const late = d !== null && d < 0 && OPEN_STATUSES.includes(p.status);
+      return `<div class="nowrap">${fmtDate(p.appDeadline)}</div><div class="small ${late ? '' : 'muted'}" ${late ? 'style="color:var(--crit);font-weight:600"' : ''}>${p.appDeadline ? relDays(d) : ''}</div>`;
+    }},
+    {h:'Checklist', get: p => { const s = reqStats(p); return s.total ? progressBar(s.done, s.total) : '<span class="muted small">none</span>'; }},
+    {h:'Tuition', cls:'num', get: p => p.tuition ? money2(p.tuition, p.currency, 'block') : '<span class="muted">—</span>'},
+  ];
+  return `
+  <div class="toolbar">
+    <div class="search"><input type="text" id="q" placeholder="Search universities, programmes, notes…" value="${esc(q)}"></div>
+    <select class="filter" id="f-status"><option value="">All statuses</option>${STATUSES.map(s => `<option${filters.status === s ? ' selected' : ''}>${s}</option>`).join('')}</select>
+    <select class="filter" id="f-country"><option value="">All countries</option>${countries.map(c => `<option${filters.country === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
+    <div class="grow"></div>
+    <button class="btn" data-act="export-csv">Export CSV</button>
+  </div>
+  ${rows.length ? tableHTML(cols, rows, p => `data-act="open-program" data-id="${p.id}"`) : `<div class="card"><div class="empty"><p>No applications match that filter.</p></div></div>`}
+  <div class="hint" style="margin-top:10px">${rows.length} of ${state.programs.length} shown · click any row to open it</div>`;
+};
+AFTER.applications = () => {
+  $('#q').addEventListener('input', e => { q = e.target.value; const s = $('#view').scrollTop; render(); $('#view').scrollTop = s; const i = $('#q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
+  $('#f-status').addEventListener('change', e => { filters.status = e.target.value; render(); });
+  $('#f-country').addEventListener('change', e => { filters.country = e.target.value; render(); });
+};
+
+/* ================================ BOARD ================================== */
+VIEW.board = () => {
+  if(!state.programs.length) return `<div class="card">${emptyState('▥', 'No applications yet.', '+ Add your first application', () => ACTIONS['add-program']())}</div>`;
+  return `<div class="board">${STATUSES.map(s => {
+    const items = state.programs.filter(p => p.status === s);
+    return `<div class="col" data-status="${esc(s)}">
+      <div class="col-h"><span class="badge s-${slug(s)}" style="border:0;background:none;padding:0"><span class="bd"></span>${esc(s)}</span><span class="n">${items.length}</span></div>
+      <div class="col-b">${items.map(p => {
+        const st = reqStats(p), d = daysUntil(p.appDeadline);
+        return `<div class="kcard" draggable="true" data-id="${p.id}" data-act="open-program">
+          <div class="u">${esc(p.university)}</div>
+          <div class="p">${esc(p.program || '')}</div>
+          <div class="m">
+            ${p.country ? `<span>${esc(p.country)}</span>` : ''}
+            ${p.appDeadline ? `<span style="${d !== null && d < 0 && OPEN_STATUSES.includes(p.status) ? 'color:var(--crit);font-weight:600' : ''}">${d !== null && d >= 0 ? 'in ' + d + 'd' : relDays(d)}</span>` : ''}
+            ${st.total ? `<span style="margin-left:auto">${st.done}/${st.total}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('') || '<div class="muted small" style="padding:6px 4px">—</div>'}</div>
+    </div>`;
+  }).join('')}</div>`;
+};
+AFTER.board = () => {
+  let dragId = null;
+  $('#view').querySelectorAll('.kcard').forEach(c => {
+    c.addEventListener('dragstart', e => { dragId = c.dataset.id; c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    c.addEventListener('dragend', () => { c.classList.remove('dragging'); dragId = null; });
+  });
+  $('#view').querySelectorAll('.col').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drop-target'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drop-target'));
+    col.addEventListener('drop', e => {
+      e.preventDefault(); col.classList.remove('drop-target');
+      const p = prog(dragId); if(!p) return;
+      p.status = col.dataset.status; save(); render(); toast(p.university + ' → ' + p.status);
+    });
+  });
+};
+/* ========================= PROGRAM DETAIL DRAWER ========================= */
+let drawerTab = 'overview';
+
+function openProgram(id){
+  const p = prog(id); if(!p) return;
+  drawerTab = 'overview';
+  paintDrawer(p);
+  document.addEventListener('keydown', escClose);
+}
+function paintDrawer(p){
+  const st = reqStats(p);
+  const prev = $('#overlays').querySelector('.drawer-b');
+  const scrollY = prev ? prev.scrollTop : 0;
+  $('#overlays').innerHTML = `
+    <div class="drawer-scrim" data-close></div>
+    <div class="drawer">
+      <div class="drawer-h">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="flex:1;min-width:0">
+            <h3 style="font-size:17px">${esc(p.university)}</h3>
+            <div class="small muted" style="margin-top:3px">${esc(p.program || 'Programme not set')} · ${esc(p.city ? p.city + ', ' : '')}${esc(p.country || '—')}</div>
+          </div>
+          <select id="d-status" style="width:auto">${STATUSES.map(s => `<option${p.status === s ? ' selected' : ''}>${s}</option>`).join('')}</select>
+          <button class="btn icon-btn" data-close title="Close">✕</button>
+        </div>
+      </div>
+      <div class="tabs">
+        ${[['overview','Overview'],['checklist',`Checklist ${st.total ? `(${st.done}/${st.total})` : ''}`],['linked','Linked items'],['notes','Notes']]
+          .map(([k, l]) => `<button class="tab${drawerTab === k ? ' active' : ''}" data-tab="${k}">${esc(l)}</button>`).join('')}
+      </div>
+      <div class="drawer-b">${DRAWER[drawerTab](p)}</div>
+    </div>`;
+  const root = $('#overlays');
+  root.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeOverlay));
+  root.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { drawerTab = b.dataset.tab; paintDrawer(p); }));
+  $('#d-status').addEventListener('change', e => { p.status = e.target.value; save(); paintDrawer(p); render(); });
+  const nb = root.querySelector('.drawer-b'); if(nb) nb.scrollTop = scrollY;
+  wireDrawer(p);
+}
+
+const DRAWER = {};
+DRAWER.overview = p => {
+  const d = daysUntil(p.appDeadline);
+  const spent = state.expenses.filter(e => e.programId === p.id).reduce((s, e) => s + toBase(e.amount, e.currency), 0);
+  return `
+  <div class="card"><div class="card-h"><h3>Key facts</h3>
+    <button class="btn sm" style="margin-left:auto" data-edit>Edit</button></div>
+    <div class="card-b"><dl class="kv">
+      <dt>Degree</dt><dd>${esc(p.degree || '—')}</dd>
+      <dt>Intake</dt><dd>${esc(p.intake || '—')}</dd>
+      <dt>Tier</dt><dd>${p.tier ? `<span class="tag">${esc(p.tier)}</span>` : '—'}</dd>
+      <dt>Duration</dt><dd>${esc(p.duration || '—')}</dd>
+      <dt>Ranking</dt><dd>${esc(p.ranking || '—')}</dd>
+      <dt>Application deadline</dt><dd>${fmtDate(p.appDeadline)} ${p.appDeadline ? `<span class="small muted">(${relDays(d)})</span>` : ''}</dd>
+      <dt>Scholarship deadline</dt><dd>${fmtDate(p.scholarshipDeadline)}</dd>
+      <dt>Decision expected</dt><dd>${fmtDate(p.decisionDate)}</dd>
+      <dt>Tuition (total)</dt><dd>${p.tuition ? money2(p.tuition, p.currency) : '—'}</dd>
+      <dt>Living cost / year</dt><dd>${p.livingCost ? money2(p.livingCost, p.currency) : '—'}</dd>
+      <dt>Scholarship awarded</dt><dd>${p.award ? money2(p.award, p.currency) : '—'}</dd>
+      <dt>Net tuition</dt><dd>${p.tuition ? money2(Number(p.tuition) - Number(p.award || 0), p.currency) : '—'}</dd>
+      <dt>Application fee</dt><dd>${p.appFee ? money2(p.appFee, p.currency) : '—'}</dd>
+      <dt>Post-study work</dt><dd>${esc(p.workRights || '—')}</dd>
+      <dt>Spent on this app</dt><dd>${money2(spent, state.settings.baseCurrency)}</dd>
+      <dt>Portal</dt><dd>${p.portalUrl ? `<a class="link-out" href="${esc(p.portalUrl)}" target="_blank" rel="noopener">Open portal ↗</a>` : '—'}</dd>
+      <dt>Portal username</dt><dd>${esc(p.portalUser || '—')}</dd>
+    </dl>
+    <div class="hint" style="margin-top:12px">Never store portal passwords here — keep those in a password manager.</div>
+    </div></div>`;
+};
+
+DRAWER.checklist = p => {
+  const reqs = p.reqs || [];
+  return `
+  <div class="card">
+    <div class="card-h"><h3>Requirements</h3><span class="sub">${reqStats(p).done} of ${reqs.length} done</span>
+      ${!reqs.length ? '<button class="btn sm" style="margin-left:auto" data-tpl>Insert standard checklist</button>' : '<button class="btn sm ghost" style="margin-left:auto" data-tpl>Add standard items</button>'}</div>
+    ${reqs.length ? reqs.map((r, i) => {
+      const dd = daysUntil(r.due);
+      return `<div class="chk${r.done ? ' done' : ''}">
+        <input type="checkbox" data-req="${i}" ${r.done ? 'checked' : ''}>
+        <div class="l"><div class="t">${esc(r.label)}</div>${r.note ? `<div class="n">${esc(r.note)}</div>` : ''}</div>
+        <div class="due ${!r.done && dd !== null && dd < 0 ? 'over' : ''}">${r.due ? fmtDate(r.due) : ''}</div>
+        <button class="btn sm ghost" data-req-del="${i}" title="Remove">✕</button>
+      </div>`;
+    }).join('') : '<div class="empty" style="padding:26px"><p>No requirement items yet.</p></div>'}
+    <div class="row-add">
+      <input type="text" id="req-new" placeholder="Add a requirement…">
+      <input type="date" id="req-due" title="Due date (optional)">
+      <button class="btn primary sm" data-req-add>Add</button>
+    </div>
+  </div>`;
+};
+
+DRAWER.linked = p => {
+  const docs = state.documents.filter(d => (d.programIds || []).includes(p.id));
+  const recs = state.recommenders.map(r => ({r, q: (r.requests || []).find(x => x.programId === p.id)})).filter(x => x.q);
+  const schs = state.scholarships.filter(s => s.programId === p.id);
+  const exps = state.expenses.filter(e => e.programId === p.id);
+  const cons = state.contacts.filter(c => c.programId === p.id);
+  const vis = state.visas.filter(v => v.programId === p.id);
+  const sec = (title, items, fn) => `<div class="card"><div class="card-h"><h3>${title}</h3><span class="sub">${items.length}</span></div>
+    ${items.length ? `<div>${items.map(fn).join('')}</div>` : '<div class="card-b muted small">Nothing linked yet.</div>'}</div>`;
+  return `<div class="stack">
+    ${sec('Documents', docs, d => `<div class="chk"><div class="l"><div class="t">${esc(d.name)} ${d.version ? `<span class="tag">v${esc(d.version)}</span>` : ''}</div><div class="n">${esc(d.type || '')}</div></div>${badge(d.status)}</div>`)}
+    ${sec('Recommendation letters', recs, x => `<div class="chk"><div class="l"><div class="t">${esc(x.r.name)}</div><div class="n">${esc(x.r.org || '')}${x.q.deadline ? ' · due ' + fmtDate(x.q.deadline) : ''}</div></div>${badge(x.q.status)}</div>`)}
+    ${sec('Scholarships', schs, s => `<div class="chk"><div class="l"><div class="t">${esc(s.name)}</div><div class="n">${s.amount ? money(s.amount, s.currency) + ' ' + altText(s.amount, s.currency) : ''}${s.deadline ? ' · ' + fmtDate(s.deadline) : ''}</div></div>${badge(s.status)}</div>`)}
+    ${sec('Expenses', exps, e => `<div class="chk"><div class="l"><div class="t">${esc(e.description || e.category)}</div><div class="n">${esc(e.category)} · ${fmtDate(e.date)}</div></div><span class="mono right">${money2(e.amount, e.currency, 'block')}</span></div>`)}
+    ${sec('Visa case', vis, v => `<div class="chk"><div class="l"><div class="t">${esc(v.country)} — ${esc(v.type || 'student visa')}</div><div class="n">${v.appointment ? 'Appointment ' + fmtDate(v.appointment) : ''}</div></div>${badge(v.status)}</div>`)}
+    ${sec('Contacts', cons, c => `<div class="chk"><div class="l"><div class="t">${esc(c.name)}</div><div class="n">${esc(c.role || '')}${c.email ? ' · ' + esc(c.email) : ''}</div></div></div>`)}
+  </div>`;
+};
+
+DRAWER.notes = p => `
+  <div class="card"><div class="card-h"><h3>Notes</h3><span class="sub">saved as you type</span></div>
+  <div class="card-b"><textarea id="d-notes" style="min-height:340px" placeholder="Programme requirements, conversations with admissions, why this school, doubts…">${esc(p.notes || '')}</textarea></div></div>`;
+
+function wireDrawer(p){
+  const root = $('#overlays');
+  const ed = root.querySelector('[data-edit]');
+  if(ed) ed.addEventListener('click', () => editProgram(p));
+  const tpl = root.querySelector('[data-tpl]');
+  if(tpl) tpl.addEventListener('click', () => {
+    p.reqs = p.reqs || [];
+    const have = new Set(p.reqs.map(r => r.label));
+    REQ_TEMPLATE.forEach(l => { if(!have.has(l)) p.reqs.push({label:l, done:false, due:p.appDeadline || ''}); });
+    save(); paintDrawer(p); render();
+  });
+  root.querySelectorAll('[data-req]').forEach(cb => cb.addEventListener('change', () => {
+    p.reqs[Number(cb.dataset.req)].done = cb.checked; save(); paintDrawer(p); render();
+  }));
+  root.querySelectorAll('[data-req-del]').forEach(b => b.addEventListener('click', () => {
+    p.reqs.splice(Number(b.dataset.reqDel), 1); save(); paintDrawer(p); render();
+  }));
+  const add = root.querySelector('[data-req-add]');
+  if(add){
+    const doAdd = () => {
+      const t = root.querySelector('#req-new'), d = root.querySelector('#req-due');
+      if(!t.value.trim()) return;
+      p.reqs = p.reqs || []; p.reqs.push({label:t.value.trim(), done:false, due:d.value || ''});
+      save(); paintDrawer(p); render();
+      setTimeout(() => { const n = $('#overlays').querySelector('#req-new'); if(n) n.focus(); }, 0);
+    };
+    add.addEventListener('click', doAdd);
+    root.querySelector('#req-new').addEventListener('keydown', e => { if(e.key === 'Enter') doAdd(); });
+  }
+  const nt = root.querySelector('#d-notes');
+  if(nt) nt.addEventListener('input', () => { p.notes = nt.value; clearTimeout(wireDrawer._t); wireDrawer._t = setTimeout(save, 400); });
+}
+
+/* ============================ RECORD EDITORS ============================= */
+const PROGRAM_FIELDS = () => [
+  {key:'university', label:'University', placeholder:'University of Toronto'},
+  {key:'program', label:'Programme', placeholder:'MSc Computer Science'},
+  {key:'country', label:'Country', placeholder:'Canada'},
+  {key:'city', label:'City'},
+  {key:'degree', label:'Degree level', type:'select', options:DEGREES},
+  {key:'intake', label:'Intake', placeholder:'Fall 2027'},
+  {key:'tier', label:'Tier', type:'select', options:TIERS, hint:'Reach / Target / Safety'},
+  {key:'status', label:'Status', type:'select', options:STATUSES, allowEmpty:false, default:'Researching'},
+  {key:'appDeadline', label:'Application deadline', type:'date'},
+  {key:'scholarshipDeadline', label:'Scholarship deadline', type:'date'},
+  {key:'decisionDate', label:'Decision expected', type:'date'},
+  {key:'duration', label:'Duration', placeholder:'2 years'},
+  {key:'currency', label:'Currency for this school', type:'select', options:CURRENCIES, allowEmpty:false, default:'USD'},
+  {key:'tuition', label:'Total tuition', type:'number', min:0},
+  {key:'livingCost', label:'Living cost / year', type:'number', min:0},
+  {key:'award', label:'Scholarship awarded', type:'number', min:0},
+  {key:'appFee', label:'Application fee', type:'number', min:0},
+  {key:'ranking', label:'Ranking / note', placeholder:'QS #21'},
+  {key:'workRights', label:'Post-study work', placeholder:'3-year PGWP'},
+  {key:'portalUrl', label:'Application portal URL', type:'url', full:true},
+  {key:'portalUser', label:'Portal username / applicant ID', full:true, hint:'Username only — never store the password here.'},
+  {key:'notes', label:'Notes', type:'textarea', full:true},
+];
+function editProgram(p){
+  openForm({
+    title: p ? 'Edit application' : 'New application', wide:true,
+    fields: PROGRAM_FIELDS(), record: p || {status:'Researching', currency:'USD'},
+    onSave: rec => {
+      if(!rec.university){ toast('A university name is required'); return; }
+      if(p){ Object.assign(p, rec); } else { rec.id = uid(); rec.reqs = []; state.programs.push(rec); }
+      save(); render(); if(p) paintDrawer(p); else toast('Application added');
+    },
+    onDelete: p ? () => { state.programs = state.programs.filter(x => x.id !== p.id); save(); closeOverlay(); render(); toast('Deleted'); } : null
+  });
+}
+
+function simpleCrud(coll, cfg){
+  return {
+    add: () => openForm({title:'New ' + cfg.noun, wide:cfg.wide, fields:cfg.fields(), record:cfg.def || {},
+      onSave: r => { r.id = uid(); state[coll].push(r); save(); render(); toast(cfg.noun + ' added'); }}),
+    edit: id => {
+      const rec = state[coll].find(x => x.id === id); if(!rec) return;
+      openForm({title:'Edit ' + cfg.noun, wide:cfg.wide, fields:cfg.fields(), record:rec,
+        onSave: r => { Object.assign(rec, r); save(); render(); },
+        onDelete: () => { state[coll] = state[coll].filter(x => x.id !== id); save(); render(); toast('Deleted'); }});
+    }
+  };
+}
+
+const docCrud = simpleCrud('documents', {noun:'document', wide:true, def:{status:'Needed', updated:todayISO()}, fields:() => [
+  {key:'name', label:'Document name', placeholder:'Statement of Purpose — Toronto'},
+  {key:'type', label:'Type', type:'select', options:DOC_TYPES},
+  {key:'version', label:'Version', placeholder:'3'},
+  {key:'status', label:'Status', type:'select', options:DOC_STATUS, allowEmpty:false},
+  {key:'updated', label:'Last updated', type:'date'},
+  {key:'expiry', label:'Valid until (if any)', type:'date'},
+  {key:'link', label:'Link or file path', type:'url', full:true, hint:'Point at the real file in Drive, Dropbox or on your disk — this tracker stores the pointer, not a copy.'},
+  {key:'programIds', label:'Used for these applications', type:'checks', full:true, options:programOptions()},
+  {key:'notes', label:'Notes', type:'textarea', full:true},
+]});
+
+const testCrud = simpleCrud('tests', {noun:'test score', wide:true, fields:() => [
+  {key:'name', label:'Test', type:'select', options:TEST_NAMES, allowEmpty:false},
+  {key:'date', label:'Date taken', type:'date'},
+  {key:'overall', label:'Overall score', placeholder:'7.5'},
+  {key:'expiry', label:'Valid until', type:'date', hint:'IELTS/TOEFL are usually valid 2 years, GRE 5 years.'},
+  {key:'sections', label:'Section scores', full:true, placeholder:'L 8.0 · R 7.5 · W 6.5 · S 7.0'},
+  {key:'sentTo', label:'Official report sent to', type:'checks', full:true, options:programOptions()},
+  {key:'notes', label:'Notes', type:'textarea', full:true},
+]});
+
+const schCrud = simpleCrud('scholarships', {noun:'scholarship', wide:true, def:{status:'Researching', currency:'USD'}, fields:() => [
+  {key:'name', label:'Scholarship name'},
+  {key:'programId', label:'For which application', type:'select', options:programOptions()},
+  {key:'amount', label:'Amount', type:'number', min:0},
+  {key:'currency', label:'Currency', type:'select', options:CURRENCIES, allowEmpty:false},
+  {key:'deadline', label:'Deadline', type:'date'},
+  {key:'status', label:'Status', type:'select', options:SCH_STATUS, allowEmpty:false},
+  {key:'url', label:'Link', type:'url', full:true},
+  {key:'notes', label:'Eligibility / notes', type:'textarea', full:true},
+]});
+
+const expCrud = simpleCrud('expenses', {noun:'expense', def:{date:todayISO(), currency:'USD'}, fields:() => [
+  {key:'date', label:'Date', type:'date'},
+  {key:'category', label:'Category', type:'select', options:EXPENSE_CATS, allowEmpty:false},
+  {key:'description', label:'Description', full:true, placeholder:'IELTS registration'},
+  {key:'amount', label:'Amount', type:'number', min:0, step:'0.01'},
+  {key:'currency', label:'Currency', type:'select', options:CURRENCIES, allowEmpty:false},
+  {key:'programId', label:'Linked application', type:'select', options:programOptions(), full:true},
+]});
+
+const conCrud = simpleCrud('contacts', {noun:'contact', wide:true, fields:() => [
+  {key:'name', label:'Name'},
+  {key:'role', label:'Role', placeholder:'Admissions officer / agent / alumnus'},
+  {key:'org', label:'Organisation'},
+  {key:'programId', label:'Related application', type:'select', options:programOptions()},
+  {key:'email', label:'Email', type:'email'},
+  {key:'phone', label:'Phone'},
+  {key:'lastContact', label:'Last contacted', type:'date'},
+  {key:'notes', label:'Notes / conversation log', type:'textarea', full:true},
+]});
+
+const recCrud = simpleCrud('recommenders', {noun:'recommender', wide:true, fields:() => [
+  {key:'name', label:'Name'},
+  {key:'title', label:'Title', placeholder:'Associate Professor'},
+  {key:'org', label:'Institution / company'},
+  {key:'email', label:'Email', type:'email'},
+  {key:'phone', label:'Phone'},
+  {key:'relationship', label:'Relationship', placeholder:'Thesis supervisor'},
+  {key:'notes', label:'Notes', type:'textarea', full:true},
+]});
+
+const visaCrud = simpleCrud('visas', {noun:'visa case', wide:true, def:{status:'Not started', currency:'USD'}, fields:() => [
+  {key:'country', label:'Country'},
+  {key:'type', label:'Visa type', placeholder:'F-1 / Student Route / Subclass 500'},
+  {key:'programId', label:'For which application', type:'select', options:programOptions()},
+  {key:'status', label:'Status', type:'select', options:VISA_STATUS, allowEmpty:false},
+  {key:'docNumber', label:'I-20 / CAS / CoE number'},
+  {key:'appointment', label:'Appointment date', type:'date'},
+  {key:'fundsRequired', label:'Funds to show', type:'number', min:0},
+  {key:'currency', label:'Currency', type:'select', options:CURRENCIES, allowEmpty:false},
+  {key:'notes', label:'Notes', type:'textarea', full:true},
+]});
+
+/* ---------------- recommender request manager (per program) -------------- */
+function openRecommender(id){
+  const r = state.recommenders.find(x => x.id === id); if(!r) return;
+  r.requests = r.requests || [];
+  const paint = () => {
+    $('#overlays').innerHTML = `
+    <div class="scrim" data-close><div class="modal">
+      <div class="modal-h"><h3>${esc(r.name)}</h3><span class="sub muted small">${esc(r.title || '')}${r.org ? ' · ' + esc(r.org) : ''}</span>
+        <button class="btn sm" style="margin-left:auto" data-editrec>Edit details</button></div>
+      <div class="modal-b" style="padding:0">
+        <div style="padding:14px 20px 6px" class="small muted">Letter requests — one row per application.</div>
+        ${r.requests.length ? r.requests.map((q, i) => `
+          <div class="chk">
+            <div class="l"><div class="t">${esc(progName(q.programId) || 'Unlinked')}</div>
+              <div class="n">${q.deadline ? 'Due ' + fmtDate(q.deadline) : 'No deadline set'}${q.requested ? ' · asked ' + fmtDate(q.requested) : ''}</div></div>
+            <select data-rq="${i}" style="width:auto">${REQ_STATUS.map(s => `<option${q.status === s ? ' selected' : ''}>${s}</option>`).join('')}</select>
+            <button class="btn sm ghost" data-rqdel="${i}">✕</button>
+          </div>`).join('') : '<div class="empty" style="padding:22px"><p>No letter requests yet.</p></div>'}
+        <div class="row-add">
+          <select id="rq-p" style="flex:1">${state.programs.map(p => `<option value="${p.id}">${esc(progLabel(p))}</option>`).join('') || '<option value="">Add an application first</option>'}</select>
+          <input type="date" id="rq-d" title="Deadline">
+          <button class="btn primary sm" data-rqadd>Add</button>
+        </div>
+      </div>
+      <div class="modal-f"><button class="btn" data-close>Close</button></div>
+    </div></div>`;
+    const root = $('#overlays');
+    root.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', e => { if(e.target === el) closeOverlay(); }));
+    root.querySelector('[data-editrec]').addEventListener('click', () => recCrud.edit(r.id));
+    root.querySelectorAll('[data-rq]').forEach(s => s.addEventListener('change', () => {
+      const q = r.requests[Number(s.dataset.rq)];
+      q.status = s.value;
+      if(s.value === 'Asked' && !q.requested) q.requested = todayISO();
+      if(s.value === 'Submitted') q.submitted = todayISO();
+      save(); paint(); render();
+    }));
+    root.querySelectorAll('[data-rqdel]').forEach(b => b.addEventListener('click', () => { r.requests.splice(Number(b.dataset.rqdel), 1); save(); paint(); render(); }));
+    root.querySelector('[data-rqadd]').addEventListener('click', () => {
+      const pid = root.querySelector('#rq-p').value; if(!pid) return;
+      const p = prog(pid);
+      r.requests.push({programId:pid, status:'Not asked', deadline: root.querySelector('#rq-d').value || (p ? p.appDeadline : '') || ''});
+      save(); paint(); render();
+    });
+  };
+  paint(); document.addEventListener('keydown', escClose);
+}
+
+/* -------------------------- visa step checklist -------------------------- */
+function openVisa(id){
+  const v = state.visas.find(x => x.id === id); if(!v) return;
+  if(!v.steps) v.steps = VISA_STEPS.map(l => ({label:l, done:false}));
+  const paint = () => {
+    const done = v.steps.filter(s => s.done).length;
+    $('#overlays').innerHTML = `
+    <div class="scrim" data-close><div class="modal">
+      <div class="modal-h"><h3>${esc(v.country)} — ${esc(v.type || 'student visa')}</h3>
+        <span class="small muted">${done}/${v.steps.length} steps</span>
+        <button class="btn sm" style="margin-left:auto" data-editvisa>Edit details</button></div>
+      <div class="modal-b" style="padding:0">
+        ${v.steps.map((s, i) => `<div class="chk${s.done ? ' done' : ''}">
+          <input type="checkbox" data-vs="${i}" ${s.done ? 'checked' : ''}>
+          <div class="l"><div class="t">${esc(s.label)}</div></div></div>`).join('')}
+        <div class="row-add"><input type="text" id="vs-new" placeholder="Add a step…"><button class="btn primary sm" data-vsadd>Add</button></div>
+      </div>
+      <div class="modal-f"><button class="btn" data-close>Close</button></div>
+    </div></div>`;
+    const root = $('#overlays');
+    root.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', e => { if(e.target === el) closeOverlay(); }));
+    root.querySelector('[data-editvisa]').addEventListener('click', () => visaCrud.edit(v.id));
+    root.querySelectorAll('[data-vs]').forEach(cb => cb.addEventListener('change', () => { v.steps[Number(cb.dataset.vs)].done = cb.checked; save(); paint(); render(); }));
+    root.querySelector('[data-vsadd]').addEventListener('click', () => {
+      const i = root.querySelector('#vs-new'); if(!i.value.trim()) return;
+      v.steps.push({label:i.value.trim(), done:false}); save(); paint();
+    });
+  };
+  paint(); document.addEventListener('keydown', escClose);
+}
+/* ============================ SIMPLE LIST VIEWS =========================== */
+function toolbar(ph, extra){
+  return `<div class="toolbar"><div class="search"><input type="text" id="q" placeholder="${esc(ph)}" value="${esc(q)}"></div>${extra || ''}</div>`;
+}
+function wireSearch(){
+  const i = $('#q'); if(!i) return;
+  i.addEventListener('input', e => {
+    q = e.target.value; const s = $('#view').scrollTop; render(); $('#view').scrollTop = s;
+    const n = $('#q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length);
+  });
+}
+const hit = (...parts) => !q || parts.join(' ').toLowerCase().includes(q.toLowerCase());
+
+/* ------------------------------ documents ------------------------------- */
+VIEW.documents = () => {
+  if(!state.documents.length) return `<div class="card">${emptyState('▣', 'No documents tracked. Add your transcripts, SOP versions, CV, passport and financial papers — store the link, not the file.', '+ Add your first document', () => docCrud.add())}</div>`;
+  const rows = state.documents.filter(d => hit(d.name, d.type, d.notes)).sort((a, b) => (a.type || '').localeCompare(b.type || '') || a.name.localeCompare(b.name));
+  const cols = [
+    {h:'Document', get: d => `<div style="font-weight:600">${esc(d.name)}${d.version ? ` <span class="tag">v${esc(d.version)}</span>` : ''}</div><div class="small muted">${esc(d.type || '')}</div>`},
+    {h:'Status', get: d => badge(d.status)},
+    {h:'Used for', get: d => {
+      const n = (d.programIds || []).length;
+      return n ? `<span class="small">${(d.programIds || []).slice(0, 2).map(id => esc(progName(id))).join(', ')}${n > 2 ? ` +${n - 2}` : ''}</span>` : '<span class="muted small">—</span>';
+    }},
+    {h:'Updated', get: d => `<span class="nowrap small">${fmtDate(d.updated)}</span>`},
+    {h:'File', get: d => d.link ? `<a class="link-out" href="${esc(d.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open ↗</a>` : '<span class="muted small">no link</span>'},
+  ];
+  return toolbar('Search documents…') + tableHTML(cols, rows, d => `data-act="edit-document" data-id="${d.id}"`);
+};
+AFTER.documents = wireSearch;
+
+/* ----------------------------- recommenders ----------------------------- */
+VIEW.recommenders = () => {
+  if(!state.recommenders.length) return `<div class="card">${emptyState('✎', 'No recommenders yet. Track who you asked, when you nudged them, and whether the letter actually arrived.', '+ Add your first recommender', () => recCrud.add())}</div>`;
+  const rows = state.recommenders.filter(r => hit(r.name, r.org, r.title, r.relationship));
+  const cols = [
+    {h:'Name', get: r => `<div style="font-weight:600">${esc(r.name)}</div><div class="small muted">${esc(r.title || '')}${r.org ? ' · ' + esc(r.org) : ''}</div>`},
+    {h:'Contact', get: r => `<div class="small">${esc(r.email || '—')}</div><div class="small muted">${esc(r.phone || '')}</div>`},
+    {h:'Letters', get: r => {
+      const rq = r.requests || [];
+      if(!rq.length) return '<span class="muted small">none requested</span>';
+      const sub = rq.filter(x => x.status === 'Submitted').length;
+      return `${progressBar(sub, rq.length)}<div class="small muted">${sub}/${rq.length} submitted</div>`;
+    }},
+    {h:'Outstanding', get: r => {
+      const out = (r.requests || []).filter(x => x.status !== 'Submitted' && x.status !== 'Declined');
+      if(!out.length) return '<span class="muted small">—</span>';
+      const soon = out.map(x => daysUntil(x.deadline)).filter(d => d !== null).sort((a, b) => a - b)[0];
+      return `<div class="small">${out.length} pending</div>${soon !== undefined ? `<div class="small ${soon < 7 ? '' : 'muted'}" ${soon < 7 ? 'style="color:var(--crit);font-weight:600"' : ''}>soonest ${relDays(soon)}</div>` : ''}`;
+    }},
+  ];
+  return toolbar('Search recommenders…') + tableHTML(cols, rows, r => `data-act="open-recommender" data-id="${r.id}"`) +
+    `<div class="hint" style="margin-top:10px">Click a recommender to manage which universities they are writing for.</div>`;
+};
+AFTER.recommenders = wireSearch;
+
+/* -------------------------------- tests --------------------------------- */
+VIEW.tests = () => {
+  if(!state.tests.length) return `<div class="card">${emptyState('◈', 'No test scores recorded. Track the score, when it expires, and which universities you have actually sent official reports to.', '+ Add a test score', () => testCrud.add())}</div>`;
+  const rows = state.tests.filter(t => hit(t.name, t.sections, t.notes));
+  const cols = [
+    {h:'Test', get: t => `<div style="font-weight:600">${esc(t.name)}</div><div class="small muted">${fmtDate(t.date)}</div>`},
+    {h:'Score', get: t => `<div style="font-weight:600" class="mono">${esc(t.overall || '—')}</div><div class="small muted">${esc(t.sections || '')}</div>`},
+    {h:'Validity', get: t => {
+      const d = daysUntil(t.expiry);
+      if(!t.expiry) return '<span class="muted small">not set</span>';
+      return `<div class="nowrap small">${fmtDate(t.expiry)}</div><div class="small ${d < 90 ? '' : 'muted'}" ${d < 90 ? 'style="color:var(--serious);font-weight:600"' : ''}>${d < 0 ? 'expired' : relDays(d) + ' left'}</div>`;
+    }},
+    {h:'Reports sent to', get: t => {
+      const n = (t.sentTo || []).length;
+      return n ? `<span class="small">${(t.sentTo || []).slice(0, 2).map(id => esc(progName(id))).join(', ')}${n > 2 ? ` +${n - 2}` : ''}</span>` : '<span class="muted small">none yet</span>';
+    }},
+  ];
+  return toolbar('Search tests…') + tableHTML(cols, rows, t => `data-act="edit-test" data-id="${t.id}"`);
+};
+AFTER.tests = wireSearch;
+
+/* ----------------------------- scholarships ----------------------------- */
+VIEW.scholarships = () => {
+  if(!state.scholarships.length) return `<div class="card">${emptyState('★', 'No scholarships tracked. These usually have their own deadlines, separate from the application itself — which is exactly how people miss them.', '+ Add a scholarship', () => schCrud.add())}</div>`;
+  const rows = state.scholarships.filter(s => hit(s.name, s.notes, progName(s.programId))).sort((a, b) => (a.deadline || '9999').localeCompare(b.deadline || '9999'));
+  const awarded = state.scholarships.filter(s => s.status === 'Awarded').reduce((t, s) => t + toBase(s.amount, s.currency), 0);
+  const pending = state.scholarships.filter(s => s.status === 'Applied').reduce((t, s) => t + toBase(s.amount, s.currency), 0);
+  const cols = [
+    {h:'Scholarship', get: s => `<div style="font-weight:600">${esc(s.name)}</div><div class="small muted">${esc(progName(s.programId) || 'Not linked')}</div>`},
+    {h:'Amount', cls:'num', get: s => s.amount ? money2(s.amount, s.currency, 'block') : '<span class="muted">—</span>'},
+    {h:'Deadline', get: s => `<div class="nowrap small">${fmtDate(s.deadline)}</div><div class="small muted">${s.deadline ? relDays(daysUntil(s.deadline)) : ''}</div>`},
+    {h:'Status', get: s => badge(s.status)},
+    {h:'', get: s => s.url ? `<a class="link-out" href="${esc(s.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Link ↗</a>` : ''},
+  ];
+  return `<div class="tiles">
+      <div class="tile"><div class="lab">Awarded</div><div class="val mono">${money(awarded)}</div><div class="sub">${altText(awarded) || 'confirmed funding'}</div></div>
+      <div class="tile"><div class="lab">In play</div><div class="val mono">${money(pending)}</div><div class="sub">${altText(pending) || 'applied, awaiting decision'}</div></div>
+      <div class="tile"><div class="lab">Tracked</div><div class="val mono">${state.scholarships.length}</div><div class="sub">${state.scholarships.filter(s => s.status === 'Researching').length} not applied yet</div></div>
+    </div>` + toolbar('Search scholarships…') + tableHTML(cols, rows, s => `data-act="edit-scholarship" data-id="${s.id}"`);
+};
+AFTER.scholarships = wireSearch;
+
+/* ------------------------------- expenses ------------------------------- */
+VIEW.expenses = () => {
+  if(!state.expenses.length) return `<div class="card">${emptyState('⛁', 'No expenses logged. Application fees, test fees, attestation, courier, visa — it adds up faster than people expect.', '+ Log an expense', () => expCrud.add())}</div>`;
+  const rows = state.expenses.filter(e => hit(e.description, e.category, progName(e.programId))).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const total = totalSpent();
+  const byCat = Object.entries(state.expenses.reduce((m, e) => { m[e.category || 'Other'] = (m[e.category || 'Other'] || 0) + toBase(e.amount, e.currency); return m; }, {})).sort((a, b) => b[1] - a[1]);
+  const cols = [
+    {h:'Date', get: e => `<span class="nowrap small">${fmtDate(e.date)}</span>`},
+    {h:'Description', get: e => `<div>${esc(e.description || e.category)}</div><div class="small muted">${esc(progName(e.programId) || '')}</div>`},
+    {h:'Category', get: e => `<span class="tag">${esc(e.category || 'Other')}</span>`},
+    {h:'Amount', cls:'num', get: e => `<span class="nowrap">${money(e.amount, e.currency)}</span>`},
+    {h:`In ${state.settings.baseCurrency}`, cls:'num', get: e => `<span class="nowrap muted">${money(toBase(e.amount, e.currency))}</span>`},
+    ...(state.settings.dualCurrency !== false && homeCur() !== state.settings.baseCurrency
+      ? [{h:`In ${homeCur()}`, cls:'num', get: e => `<span class="nowrap muted">${money(convert(e.amount, e.currency, homeCur()), homeCur())}</span>`}] : []),
+  ];
+  return `<div class="tiles">
+      <div class="tile"><div class="lab">Total spent</div><div class="val mono">${money(total)}</div><div class="sub">${altText(total) || state.expenses.length + ' entries'}</div></div>
+      ${byCat.slice(0, 3).map(([c, v]) => `<div class="tile"><div class="lab">${esc(c)}</div><div class="val mono">${money(v)}</div><div class="sub">${Math.round(v / total * 100)}% of spend${altText(v) ? ' · ' + altText(v) : ''}</div></div>`).join('')}
+    </div>` + toolbar('Search expenses…') + tableHTML(cols, rows, e => `data-act="edit-expense" data-id="${e.id}"`);
+};
+AFTER.expenses = wireSearch;
+
+/* --------------------------------- visa --------------------------------- */
+VIEW.visa = () => {
+  if(!state.visas.length) return `<div class="card">${emptyState('⎘', 'No visa cases yet. Add one once an offer lands — this is where the timeline gets tight and expensive.', '+ Add a visa case', () => visaCrud.add())}</div>`;
+  const rows = state.visas.filter(v => hit(v.country, v.type, progName(v.programId)));
+  const cols = [
+    {h:'Country', get: v => `<div style="font-weight:600">${esc(v.country)}</div><div class="small muted">${esc(v.type || '')}</div>`},
+    {h:'For', get: v => `<span class="small">${esc(progName(v.programId) || '—')}</span>`},
+    {h:'Status', get: v => badge(v.status)},
+    {h:'Steps', get: v => { const s = v.steps || []; return s.length ? progressBar(s.filter(x => x.done).length, s.length) : '<span class="muted small">not started</span>'; }},
+    {h:'Appointment', get: v => v.appointment ? `<div class="nowrap small">${fmtDate(v.appointment)}</div><div class="small muted">${relDays(daysUntil(v.appointment))}</div>` : '<span class="muted small">—</span>'},
+    {h:'Funds to show', cls:'num', get: v => v.fundsRequired ? money2(v.fundsRequired, v.currency, 'block') : '<span class="muted">—</span>'},
+  ];
+  return toolbar('Search visa cases…') + tableHTML(cols, rows, v => `data-act="open-visa" data-id="${v.id}"`);
+};
+AFTER.visa = wireSearch;
+
+/* ------------------------------- contacts ------------------------------- */
+VIEW.contacts = () => {
+  if(!state.contacts.length) return `<div class="card">${emptyState('☏', 'No contacts yet. Admissions officers, agents and current students are the fastest route past an unclear requirement.', '+ Add a contact', () => conCrud.add())}</div>`;
+  const rows = state.contacts.filter(c => hit(c.name, c.org, c.role, c.notes));
+  const cols = [
+    {h:'Name', get: c => `<div style="font-weight:600">${esc(c.name)}</div><div class="small muted">${esc(c.role || '')}</div>`},
+    {h:'Organisation', get: c => `<div class="small">${esc(c.org || '—')}</div><div class="small muted">${esc(progName(c.programId) || '')}</div>`},
+    {h:'Email', get: c => c.email ? `<a class="link-out" href="mailto:${esc(c.email)}" onclick="event.stopPropagation()">${esc(c.email)}</a>` : '<span class="muted small">—</span>'},
+    {h:'Phone', get: c => `<span class="small">${esc(c.phone || '—')}</span>`},
+    {h:'Last contact', get: c => `<span class="nowrap small ${c.lastContact ? '' : 'muted'}">${c.lastContact ? fmtDate(c.lastContact) : '—'}</span>`},
+  ];
+  return toolbar('Search contacts…') + tableHTML(cols, rows, c => `data-act="edit-contact" data-id="${c.id}"`);
+};
+AFTER.contacts = wireSearch;
+
+/* ================================ COMPARE ================================ */
+VIEW.compare = () => {
+  const ps = state.programs.filter(p => !['Rejected','Withdrawn'].includes(p.status));
+  if(ps.length < 2) return `<div class="card">${emptyState('⇄', 'Add at least two live applications and this becomes a side-by-side cost comparison, everything converted to one currency.', ps.length ? '+ Add another application' : '+ Add an application', () => ACTIONS['add-program']())}</div>`;
+  const net = p => toBase(p.tuition, p.currency) - toBase(p.award, p.currency);
+  const best = Math.min(...ps.filter(p => p.tuition).map(net));
+  const rowsDef = [
+    ['Status', p => badge(p.status)],
+    ['Country', p => esc(p.country || '—')],
+    ['Degree', p => esc(p.degree || '—')],
+    ['Intake', p => esc(p.intake || '—')],
+    ['Duration', p => esc(p.duration || '—')],
+    ['Ranking', p => esc(p.ranking || '—')],
+    ['Tier', p => p.tier ? `<span class="tag">${esc(p.tier)}</span>` : '—'],
+    ['Application deadline', p => fmtDate(p.appDeadline)],
+    ['Checklist', p => { const s = reqStats(p); return s.total ? progressBar(s.done, s.total) : '<span class="muted small">—</span>'; }],
+    ['Tuition (total)', p => p.tuition ? `<span class="mono">${money2(p.tuition, p.currency, 'block')}</span>` : '<span class="muted">—</span>'],
+    ['Scholarship awarded', p => p.award ? `<span class="mono" style="color:var(--good);font-weight:600">−${money(p.award, p.currency)}</span><div class="alt2">${altText(p.award, p.currency)}</div>` : '<span class="muted">—</span>'],
+    ['Net tuition', p => p.tuition
+      ? `<span class="mono" style="font-weight:650">${money(Number(p.tuition) - Number(p.award || 0), p.currency)}</span>${net(p) === best ? ' <span class="tag" style="border-color:var(--good);color:var(--good)">lowest</span>' : ''}<div class="alt2">${altText(Number(p.tuition) - Number(p.award || 0), p.currency) || '≈ ' + money(net(p))}</div>`
+      : '<span class="muted">—</span>'],
+    ['Living cost / year', p => p.livingCost ? `<span class="mono">${money2(p.livingCost, p.currency, 'block')}</span>` : '<span class="muted">—</span>'],
+    ['First-year total', p => {
+      const yrs = parseFloat(p.duration) || 2;
+      const t = (Number(p.tuition) - Number(p.award || 0)) / yrs + Number(p.livingCost || 0);
+      return p.tuition ? `<span class="mono" style="font-weight:650">${money(t, p.currency)}</span><div class="alt2">${altText(t, p.currency)}</div>` : '<span class="muted">—</span>';
+    }],
+    ['Post-study work', p => esc(p.workRights || '—')],
+  ];
+  return `<div class="hint" style="margin-bottom:12px">Each school in its own currency, with the <strong>${esc(homeCur())}</strong> equivalent underneath — that second line is what makes the columns comparable. "Lowest" is decided on converted value. Rejected and withdrawn applications are hidden. First-year total assumes tuition is spread evenly across the stated duration.</div>
+  <div class="card" style="overflow-x:auto"><table>
+    <thead><tr><th style="min-width:150px">Attribute</th>${ps.map(p => `<th style="min-width:165px">${esc(p.university)}<div class="small muted" style="font-weight:400;text-transform:none;letter-spacing:0">${esc(p.program || '')}</div></th>`).join('')}</tr></thead>
+    <tbody>${rowsDef.map(([label, fn]) => `<tr><td class="muted small">${label}</td>${ps.map(p => `<td>${fn(p)}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>`;
+};
+
+/* ============================ DATA & SETTINGS ============================ */
+VIEW.data = () => {
+  const used = [...new Set([state.settings.baseCurrency, homeCur(), ...state.programs.map(p => p.currency), ...state.expenses.map(e => e.currency), ...state.scholarships.map(s => s.currency), ...state.visas.map(v => v.currency)].filter(Boolean))];
+  const counts = [['Applications', state.programs.length], ['Documents', state.documents.length], ['Recommenders', state.recommenders.length],
+    ['Test scores', state.tests.length], ['Scholarships', state.scholarships.length], ['Expenses', state.expenses.length],
+    ['Visa cases', state.visas.length], ['Contacts', state.contacts.length]];
+  const fsOK = !!window.showSaveFilePicker;
+  return `<div class="grid2">
+    <div class="stack">
+      <div class="card"><div class="card-h"><h3>Where your data lives</h3></div><div class="card-b stack">
+        <p style="margin:0" class="small">Everything is stored inside this browser. Nothing is uploaded anywhere, and there is no account. That also means: <strong>clearing your browser data deletes it</strong>. Keep a backup.</p>
+        <div class="sep"></div>
+        <div>
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px">Link a file on your disk ${fsOK ? '' : '<span class="tag">unsupported in this browser</span>'}</div>
+          <p class="small muted" style="margin:0 0 8px">${fsOK ? 'Every change writes straight to a .json file you choose. This is the safest way to use the tracker — the file is the source of truth and you can back it up or sync it however you like.' : 'Your browser does not support direct file writing. Use Export regularly instead. Chrome or Edge support this.'}</p>
+          <div class="toolbar" style="margin:0">
+            <button class="btn primary" data-act="link-file" ${fsOK ? '' : 'disabled'}>${fileHandle ? 'Change linked file' : 'Choose data file'}</button>
+            <button class="btn" data-act="open-file" ${fsOK ? '' : 'disabled'}>Open existing data file</button>
+          </div>
+          <div class="hint">${fileHandle ? 'Currently linked and auto-saving.' : 'Not linked — saving to browser storage only.'}</div>
+        </div>
+        <div class="sep"></div>
+        <div>
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px">Manual backup</div>
+          <div class="toolbar" style="margin:0">
+            <button class="btn" data-act="export">Export backup (.json)</button>
+            <button class="btn" data-act="import">Import backup</button>
+            <button class="btn" data-act="export-csv">Applications → CSV</button>
+          </div>
+        </div>
+      </div></div>
+
+      <div class="card"><div class="card-h"><h3>Share it with a friend</h3></div><div class="card-b stack">
+        <p class="small" style="margin:0">This file carries no data inside it — your applications live in your browser, not in the HTML. So sending the file to someone gives them a completely empty tracker of their own. They cannot see anything of yours, and you cannot see theirs.</p>
+        <div>
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px">The easy way</div>
+          <p class="small muted" style="margin:0 0 8px">Send them <code>study-abroad-tracker.html</code> over WhatsApp, email or a Drive link. They save it and double-click it. Done — no install, no account, works offline.</p>
+          <button class="btn" data-act="share-copy">Download a fresh copy to send</button>
+        </div>
+        <div class="sep"></div>
+        <div>
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px">The link way</div>
+          <p class="small muted" style="margin:0">Put the same file on any free static host — GitHub Pages, Netlify Drop, Cloudflare Pages — and share the URL instead. Same behaviour: each visitor's data stays in their own browser. Useful if you want to send one link to a group and push updates later.</p>
+        </div>
+        <div class="sep"></div>
+        <p class="small muted" style="margin:0"><strong>One catch:</strong> two people using the same browser profile on the same computer will share the same data. If you and a sibling share a laptop, use different browser profiles, or link each person to their own data file above.</p>
+      </div></div>
+
+      <div class="card"><div class="card-h"><h3>Danger zone</h3></div><div class="card-b">
+        <div class="toolbar" style="margin:0">
+          <button class="btn" data-act="seed">Load sample data</button>
+          <button class="btn danger" data-act="wipe">Erase everything</button>
+        </div>
+        <div class="hint">Sample data is appended, not merged — erase first if you want a clean slate.</div>
+      </div></div>
+    </div>
+
+    <div class="stack">
+      <div class="card"><div class="card-h"><h3>Preferences</h3></div><div class="card-b stack">
+        <div><label class="fl">Your name (optional)</label><input type="text" id="set-owner" value="${esc(state.settings.owner || '')}"></div>
+        <div><label class="fl">Intake you are targeting</label><input type="text" id="set-intake" value="${esc(state.settings.intake || '')}" placeholder="Fall 2027"></div>
+        <div><label class="fl">Base currency</label>
+          <select id="set-base">${CURRENCIES.map(c => `<option${state.settings.baseCurrency === c ? ' selected' : ''}>${c}</option>`).join('')}</select>
+          <div class="hint">Dashboard and expense totals are added up in this currency.</div></div>
+        <div><label class="fl">Home currency (shown beside every amount)</label>
+          <select id="set-home">${CURRENCIES.map(c => `<option${homeCur() === c ? ' selected' : ''}>${c}</option>`).join('')}</select>
+          <div class="hint">A school priced in AUD shows as <strong>A$96,000 ≈ ${esc(money(convert(96000, 'AUD', homeCur()), homeCur()))}</strong>. Set this to whatever currency you actually think in.</div></div>
+        <div><label class="badge" style="cursor:pointer;padding:6px 12px">
+          <input type="checkbox" id="set-dual" ${state.settings.dualCurrency !== false ? 'checked' : ''} style="margin:0">
+          Show the home-currency equivalent everywhere</label></div>
+      </div></div>
+
+      <div class="card"><div class="card-h"><h3>Exchange rates</h3><span class="sub">value of 1 unit in USD</span></div>
+        <div class="card-b"><div class="stack">
+          ${used.map(c => `<div style="display:grid;grid-template-columns:70px 1fr;align-items:center;gap:10px">
+            <span class="small" style="font-weight:600">${esc(c)}</span>
+            <input type="number" step="0.0001" min="0" data-rate="${esc(c)}" value="${state.settings.rates[c] ?? DEFAULT_RATES[c] ?? 1}">
+          </div>`).join('')}
+          <div class="hint">These are rough defaults from mid-2025. Update them if precision matters — nothing here fetches live rates, by design.</div>
+        </div></div></div>
+
+      <div class="card"><div class="card-h"><h3>What's in here</h3></div><div class="card-b">
+        <dl class="kv">${counts.map(([k, v]) => `<dt>${k}</dt><dd class="mono">${v}</dd>`).join('')}</dl>
+      </div></div>
+    </div>
+  </div>`;
+};
+AFTER.data = () => {
+  const bind = (id, key) => { const el = $('#' + id); if(el) el.addEventListener('change', () => { state.settings[key] = el.value; save(); render(); }); };
+  bind('set-owner', 'owner'); bind('set-intake', 'intake'); bind('set-base', 'baseCurrency'); bind('set-home', 'homeCurrency');
+  const dual = $('#set-dual');
+  if(dual) dual.addEventListener('change', () => { state.settings.dualCurrency = dual.checked; save(); render(); });
+  $('#view').querySelectorAll('[data-rate]').forEach(i => i.addEventListener('change', () => {
+    state.settings.rates[i.dataset.rate] = Number(i.value) || 1; save(); toast('Rate updated');
+  }));
+};
+/* =============================== ACTIONS ================================= */
+function exportCSV(){
+  const cols = ['university','program','country','city','degree','intake','tier','status','appDeadline','scholarshipDeadline','decisionDate','duration','currency','tuition','livingCost','award','appFee','ranking','workRights','portalUrl','portalUser','notes'];
+  const head = ['University','Programme','Country','City','Degree','Intake','Tier','Status','App deadline','Scholarship deadline','Decision expected','Duration','Currency','Tuition','Living cost','Scholarship awarded','App fee','Ranking','Post-study work','Portal URL','Portal user','Notes','Checklist done','Checklist total'];
+  const lines = [head.map(csvCell).join(',')];
+  state.programs.forEach(p => {
+    const s = reqStats(p);
+    lines.push(cols.map(c => csvCell(p[c])).concat([s.done, s.total]).join(','));
+  });
+  download('applications-' + todayISO() + '.csv', lines.join('\n'), 'text/csv');
+  toast('CSV downloaded');
+}
+
+function seed(){
+  const P = (o) => Object.assign({id:uid(), reqs:[], currency:'USD'}, o);
+  const mk = (o, reqDone) => {
+    const p = P(o);
+    p.reqs = REQ_TEMPLATE.map((l, i) => ({label:l, done:i < reqDone, due:p.appDeadline || ''}));
+    return p;
+  };
+  const a = mk({university:'University of Toronto', program:'MSc Computer Science', country:'Canada', city:'Toronto', degree:'Master’s', intake:'Fall 2027', tier:'Reach', status:'Submitted', appDeadline:'2026-12-01', scholarshipDeadline:'2026-11-15', decisionDate:'2027-03-15', duration:'2 years', currency:'CAD', tuition:62000, livingCost:18000, appFee:125, ranking:'QS #21', workRights:'3-year PGWP', portalUrl:'https://apply.sgs.utoronto.ca', portalUser:'sakib.a', notes:'Strong research fit with the systems group. Emailed Prof. Chen, no reply yet.'}, 9);
+  const b = mk({university:'TU Munich', program:'MSc Informatics', country:'Germany', city:'Munich', degree:'Master’s', intake:'Winter 2027', tier:'Target', status:'Preparing', appDeadline:'2027-01-15', duration:'2 years', currency:'EUR', tuition:300, livingCost:13200, appFee:75, ranking:'QS #28', workRights:'18-month job-seeker visa', notes:'Almost no tuition. APS certificate is the bottleneck — takes 6–8 weeks.'}, 5);
+  const c = mk({university:'University of Melbourne', program:'Master of IT', country:'Australia', city:'Melbourne', degree:'Master’s', intake:'Semester 1 2027', tier:'Target', status:'Offer', appDeadline:'2026-10-31', decisionDate:'2026-12-20', duration:'2 years', currency:'AUD', tuition:96000, livingCost:29000, award:24000, appFee:100, ranking:'QS #13', workRights:'2–3 year post-study work', notes:'Conditional offer received. 25% merit scholarship attached. Deposit due 6 weeks after acceptance.'}, 11);
+  const d = mk({university:'Arizona State University', program:'MS Computer Science', country:'United States', city:'Tempe', degree:'Master’s', intake:'Fall 2027', tier:'Safety', status:'Shortlisted', appDeadline:'2027-02-01', duration:'2 years', currency:'USD', tuition:47000, livingCost:16000, appFee:70, ranking:'QS #179', workRights:'3-year STEM OPT'}, 2);
+  state.programs.push(a, b, c, d);
+
+  state.documents.push(
+    {id:uid(), name:'Bachelor transcript (sealed)', type:'Transcript', version:'', status:'Final', updated:'2026-06-12', link:'', programIds:[a.id, b.id, c.id, d.id], notes:'Two sealed copies left. Order more before December.'},
+    {id:uid(), name:'SOP — Toronto', type:'Statement of Purpose', version:'4', status:'Final', updated:'2026-08-02', link:'', programIds:[a.id], notes:'Tailored to systems research. Reviewed by Farhan.'},
+    {id:uid(), name:'SOP — Melbourne', type:'Statement of Purpose', version:'2', status:'Final', updated:'2026-07-20', link:'', programIds:[c.id]},
+    {id:uid(), name:'SOP — TU Munich', type:'Statement of Purpose', version:'1', status:'Draft', updated:'2026-08-10', link:'', programIds:[b.id], notes:'Needs a paragraph on the APS process and German language plan.'},
+    {id:uid(), name:'CV (academic, 2 pages)', type:'CV / Resume', version:'6', status:'Final', updated:'2026-07-28', link:'', programIds:[a.id, b.id, c.id, d.id]},
+    {id:uid(), name:'Passport scan', type:'Passport', status:'Final', updated:'2026-01-05', expiry:'2031-04-18', link:'', programIds:[a.id, b.id, c.id, d.id]},
+    {id:uid(), name:'Bank solvency certificate', type:'Bank / Financial', status:'Needed', updated:'', link:'', programIds:[c.id], notes:'Melbourne wants 12 months of funds. Must be dated within 3 months of visa filing.'},
+  );
+
+  const r1 = {id:uid(), name:'Dr. Farhan Rahman', title:'Associate Professor', org:'BUET', email:'f.rahman@example.edu', relationship:'Thesis supervisor',
+    requests:[{programId:a.id, status:'Submitted', requested:'2026-09-20', submitted:'2026-10-14', deadline:'2026-12-01'},
+              {programId:c.id, status:'Submitted', requested:'2026-09-20', submitted:'2026-10-02', deadline:'2026-10-31'},
+              {programId:b.id, status:'Reminded', requested:'2026-11-02', deadline:'2027-01-15'}]};
+  const r2 = {id:uid(), name:'Nadia Islam', title:'Engineering Manager', org:'Brain Station 23', email:'nadia@example.com', relationship:'Line manager, 2 years',
+    requests:[{programId:a.id, status:'Submitted', requested:'2026-09-21', submitted:'2026-11-04', deadline:'2026-12-01'},
+              {programId:d.id, status:'Not asked', deadline:'2027-02-01'}]};
+  state.recommenders.push(r1, r2);
+
+  state.tests.push(
+    {id:uid(), name:'IELTS', date:'2026-05-17', overall:'7.5', sections:'L 8.5 · R 8.0 · W 6.5 · S 7.0', expiry:'2028-05-17', sentTo:[a.id, c.id], notes:'Writing 6.5 is below Toronto’s preferred 7.0 — retake if there is time.'},
+    {id:uid(), name:'GRE General', date:'2026-06-28', overall:'322', sections:'Q 167 · V 155 · AWA 4.0', expiry:'2031-06-28', sentTo:[a.id, d.id]},
+  );
+
+  state.scholarships.push(
+    {id:uid(), name:'Melbourne Graduate Scholarship', programId:c.id, amount:24000, currency:'AUD', deadline:'2026-10-31', status:'Awarded', notes:'Automatic consideration with the application. 25% fee remission.'},
+    {id:uid(), name:'DAAD Study Scholarship', programId:b.id, amount:11700, currency:'EUR', deadline:'2026-10-01', status:'Applied', url:'https://www.daad.de'},
+    {id:uid(), name:'U of T Fellowship (departmental)', programId:a.id, amount:20000, currency:'CAD', deadline:'2026-11-15', status:'Applied'},
+  );
+
+  state.expenses.push(
+    {id:uid(), date:'2026-04-02', category:'Test fee', description:'IELTS registration', amount:24500, currency:'BDT'},
+    {id:uid(), date:'2026-06-01', category:'Test fee', description:'GRE registration', amount:220, currency:'USD'},
+    {id:uid(), date:'2026-09-14', category:'Credential evaluation', description:'WES evaluation', amount:245, currency:'USD'},
+    {id:uid(), date:'2026-10-20', category:'Application fee', description:'Melbourne application', amount:100, currency:'AUD', programId:c.id},
+    {id:uid(), date:'2026-11-25', category:'Application fee', description:'Toronto application', amount:125, currency:'CAD', programId:a.id},
+    {id:uid(), date:'2026-11-26', category:'Courier', description:'Transcripts to Toronto', amount:4800, currency:'BDT', programId:a.id},
+  );
+
+  state.visas.push({id:uid(), country:'Australia', type:'Subclass 500', programId:c.id, status:'Documents', fundsRequired:29710, currency:'AUD',
+    steps:VISA_STEPS.map((l, i) => ({label:l, done:i < 2})), notes:'GTE statement needed. OSHC must cover the full course length.'});
+
+  state.contacts.push(
+    {id:uid(), name:'Sarah Whitfield', role:'International admissions officer', org:'University of Melbourne', programId:c.id, email:'intl.admissions@example.edu', lastContact:'2026-12-02', notes:'Confirmed the deposit deadline is 6 weeks from offer date, not from acceptance.'},
+    {id:uid(), name:'Tanvir Hasan', role:'Current student (2nd year)', org:'TU Munich', programId:b.id, email:'tanvir@example.com', notes:'Says APS took him 7 weeks. Recommends applying for a Munich dorm the day the offer arrives.'},
+  );
+
+  save(); render(); toast('Sample data loaded');
+}
+
+const ACTIONS = {
+  'add-program': () => editProgram(null),
+  'open-program': id => openProgram(id),
+  'add-document': () => docCrud.add(),
+  'edit-document': id => docCrud.edit(id),
+  'add-recommender': () => recCrud.add(),
+  'open-recommender': id => openRecommender(id),
+  'add-test': () => testCrud.add(),
+  'edit-test': id => testCrud.edit(id),
+  'add-scholarship': () => schCrud.add(),
+  'edit-scholarship': id => schCrud.edit(id),
+  'add-expense': () => expCrud.add(),
+  'edit-expense': id => expCrud.edit(id),
+  'add-visa': () => visaCrud.add(),
+  'open-visa': id => openVisa(id),
+  'add-contact': () => conCrud.add(),
+  'edit-contact': id => conCrud.edit(id),
+  'export': () => exportJSON(),
+  'import': () => importPrompt(),
+  'export-csv': () => exportCSV(),
+  'link-file': () => linkFile(),
+  'open-file': () => openFileLink(),
+  'seed': () => seed(),
+  'share-copy': () => {
+    const clone = document.documentElement.cloneNode(true);
+    ['#view','#overlays','#nav'].forEach(s => { const el = clone.querySelector(s); if(el) el.innerHTML = ''; });
+    const t = clone.querySelector('#toast'); if(t){ t.textContent = ''; t.className = ''; }
+    clone.setAttribute('data-theme', 'light');
+    download('study-abroad-tracker.html', '<!doctype html>\n' + clone.outerHTML, 'text/html');
+    toast('Clean copy downloaded — it contains none of your data');
+  },
+  'wipe': () => {
+    if(!confirm('This erases every application, document and record in the tracker. Export a backup first if you are not sure.')) return;
+    if(!confirm('Last check — really erase everything?')) return;
+    const theme = state.settings.theme;
+    state = blank(); state.settings.theme = theme;
+    save(); render(); toast('Everything erased');
+  },
+};
+
+/* ============================= EVENT WIRING ============================== */
+$('#view').addEventListener('click', e => {
+  const g = e.target.closest('[data-go2]');
+  if(g && !e.target.closest('[data-act]')){ go(g.dataset.go2); return; }
+  const el = e.target.closest('[data-act]');
+  if(!el) return;
+  if(e.target.tagName === 'A') return;
+  const fn = ACTIONS[el.dataset.act];
+  if(fn) fn(el.dataset.id, el, e);
+});
+$('#theme-btn').addEventListener('click', toggleTheme);
+$('#menu-btn').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
+window.addEventListener('beforeunload', () => { if(dirty) save(); });
+document.addEventListener('keydown', e => {
+  if(e.key === '/' && !/input|textarea|select/i.test(document.activeElement.tagName)){
+    const s = $('#q'); if(s){ e.preventDefault(); s.focus(); }
+  }
+  if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); exportJSON(); }
+});
+
+/* ================================= BOOT ================================== */
+load();
+applyTheme();
+render();
+setSaveStatus('', state.programs.length ? 'Saved locally' : 'Ready');
+restoreHandle();
+</script>
+</body>
+</html>
