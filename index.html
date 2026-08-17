@@ -282,10 +282,51 @@ div.alt2{margin-top:1px}
 }
 #menu-btn{display:none}
 @media print{#sidebar,header.top .top-actions,.toolbar{display:none}#app{grid-template-columns:1fr}#view{overflow:visible}}
+
+/* ---------- auth screen ---------- */
+#auth-screen{min-height:100vh;display:none;align-items:center;justify-content:center;background:var(--page);padding:20px}
+.auth-card{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:26px 24px}
+.auth-card .logo{display:flex;align-items:center;gap:9px;margin-bottom:18px}
+.auth-card .mark{width:26px;height:26px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:none}
+.auth-card h2{font-size:16px;margin-bottom:4px}
+.auth-card .sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+.auth-card .fl{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px;margin-top:12px}
+.auth-card .fl:first-of-type{margin-top:0}
+.auth-err{font-size:12px;color:var(--crit);margin-top:12px;display:none}
+.auth-err.show{display:block}
+.auth-card .btn.primary{width:100%;justify-content:center;margin-top:18px}
+.auth-switch{font-size:12.5px;color:var(--muted);margin-top:16px;text-align:center}
+.auth-switch a{cursor:pointer}
+.auth-forgot{font-size:12px;text-align:right;margin-top:6px}
+.auth-forgot a{cursor:pointer}
+#boot-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;background:var(--page)}
+.side-user{border-top:1px solid var(--line);padding:9px 12px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-2)}
+.side-user .email{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
-<div id="app">
+<div id="boot-loading">Loading…</div>
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="logo">
+      <div class="mark">SA</div>
+      <div><h1 style="font-size:14px">Application Tracker</h1></div>
+    </div>
+    <h2 id="auth-title">Sign in</h2>
+    <div class="sub" id="auth-sub">Use your email and password to reach your own tracker from any device.</div>
+    <form id="auth-form">
+      <label class="fl">Email</label>
+      <input type="email" id="auth-email" autocomplete="email" required>
+      <label class="fl">Password</label>
+      <input type="password" id="auth-password" autocomplete="current-password" required minlength="6">
+      <div class="auth-forgot" id="auth-forgot-row"><a id="auth-forgot">Forgot password?</a></div>
+      <div class="auth-err" id="auth-err"></div>
+      <button type="submit" class="btn primary" id="auth-submit">Sign in</button>
+    </form>
+    <div class="auth-switch" id="auth-switch">New here? <a id="auth-toggle">Create an account</a></div>
+  </div>
+</div>
+<div id="app" style="display:none">
   <aside id="sidebar">
     <div class="brand">
       <div class="logo">
@@ -297,6 +338,10 @@ div.alt2{margin-top:1px}
       </div>
     </div>
     <nav id="nav"></nav>
+    <div class="side-user">
+      <span class="email" id="side-email"></span>
+      <button class="btn ghost sm" id="logout-btn">Log out</button>
+    </div>
     <div class="side-foot">
       <span class="dot" id="save-dot"></span>
       <span id="save-text">Saved</span>
@@ -320,12 +365,32 @@ div.alt2{margin-top:1px}
 </div>
 <div id="toast"></div>
 <div id="overlays"></div>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script>
 /* =========================================================================
-   Study Abroad Application Tracker — single file, no server, no accounts.
-   Data lives in this browser (localStorage) and, optionally, in a .json file
+   Study Abroad Application Tracker — single file, no build step.
+   Each person signs in with their own email/password (Firebase Auth).
+   Data is stored under that account in Firestore and cached in this
+   browser (localStorage) for speed, plus optionally in a .json file
    on your disk that the app writes to directly (Chrome/Edge).
    ========================================================================= */
+
+/* ---- Firebase project config ----
+   See README.md "Set up your own login" for exact steps to get these. */
+const firebaseConfig = {
+  apiKey: "AIzaSyAH3sU1-b3sIlB4BGKt0T3QBvsOSnkKSBk",
+  authDomain: "application-tracker-3b675.firebaseapp.com",
+  projectId: "application-tracker-3b675",
+  storageBucket: "application-tracker-3b675.firebasestorage.app",
+  messagingSenderId: "895537536132",
+  appId: "1:895537536132:web:cd5af78fb2b4fcd7bd36d1"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser = null;
 
 /* ------------------------------- constants ------------------------------ */
 const STATUSES = ['Researching','Shortlisted','Preparing','Submitted','Interview','Offer','Waitlisted','Rejected','Enrolled','Withdrawn'];
@@ -444,16 +509,23 @@ function csvCell(v){
 }
 
 /* --------------------------------- state -------------------------------- */
-const KEY = 'sa_tracker_v1';
+const localKey = () => 'sa_tracker_v1_' + (currentUser ? currentUser.uid : 'anon');
 const blank = () => ({
   version: 1,
   settings: {baseCurrency:'USD', homeCurrency:'BDT', dualCurrency:true, rates: {...DEFAULT_RATES}, theme:'light', owner:'', intake:''},
   programs: [], documents: [], recommenders: [], tests: [],
   scholarships: [], expenses: [], visas: [], contacts: []
 });
+function mergeState(parsed){
+  const s = Object.assign(blank(), parsed);
+  s.settings = Object.assign(blank().settings, parsed.settings || {});
+  s.settings.rates = Object.assign({...DEFAULT_RATES}, s.settings.rates || {});
+  return s;
+}
 let state = blank();
 let fileHandle = null;
 let dirty = false;
+let cloudTimer = null;
 
 function setSaveStatus(kind, text){
   const d = $('#save-dot'); d.className = 'dot' + (kind ? ' ' + kind : '');
@@ -462,9 +534,9 @@ function setSaveStatus(kind, text){
 
 async function save(){
   try{
-    localStorage.setItem(KEY, JSON.stringify(state));
+    localStorage.setItem(localKey(), JSON.stringify(state));
     dirty = false;
-    setSaveStatus('', fileHandle ? 'Saved → file' : 'Saved locally');
+    setSaveStatus('', fileHandle ? 'Saved → file' : 'Saved');
   }catch(e){
     setSaveStatus('err', 'Browser storage failed — export!');
   }
@@ -475,17 +547,34 @@ async function save(){
       await w.close();
     }catch(e){ setSaveStatus('stale', 'File write failed'); }
   }
+  queueCloudSave();
 }
-function load(){
+function queueCloudSave(){
+  if(!currentUser) return;
+  clearTimeout(cloudTimer);
+  setSaveStatus('stale', 'Syncing…');
+  cloudTimer = setTimeout(async () => {
+    try{
+      await db.collection('users').doc(currentUser.uid).set({data: state, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
+      setSaveStatus('', fileHandle ? 'Saved → file' : 'Synced to cloud');
+    }catch(e){ setSaveStatus('err', 'Cloud sync failed'); }
+  }, 700);
+}
+async function loadUserState(uid){
   try{
-    const raw = localStorage.getItem(KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      state = Object.assign(blank(), parsed);
-      state.settings = Object.assign(blank().settings, parsed.settings || {});
-      state.settings.rates = Object.assign({...DEFAULT_RATES}, state.settings.rates || {});
+    const raw = localStorage.getItem('sa_tracker_v1_' + uid);
+    if(raw) state = mergeState(JSON.parse(raw));
+  }catch(e){ console.warn('Could not read cached data', e); }
+  try{
+    const doc = await db.collection('users').doc(uid).get();
+    if(doc.exists && doc.data().data){
+      state = mergeState(doc.data().data);
+      localStorage.setItem('sa_tracker_v1_' + uid, JSON.stringify(state));
+    }else{
+      state = blank();
+      await db.collection('users').doc(uid).set({data: state, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
     }
-  }catch(e){ console.warn('Could not read saved data', e); }
+  }catch(e){ console.warn('Could not reach cloud, using local copy', e); toast('Could not reach cloud — showing local copy'); }
 }
 
 /* file-handle persistence so "link a data file" survives reloads */
@@ -1492,7 +1581,7 @@ VIEW.data = () => {
   return `<div class="grid2">
     <div class="stack">
       <div class="card"><div class="card-h"><h3>Where your data lives</h3></div><div class="card-b stack">
-        <p style="margin:0" class="small">Everything is stored inside this browser. Nothing is uploaded anywhere, and there is no account. That also means: <strong>clearing your browser data deletes it</strong>. Keep a backup.</p>
+        <p style="margin:0" class="small">Everything is stored under your account (<strong>${esc(currentUser ? currentUser.email : '')}</strong>) and synced to the cloud, with a local copy cached in this browser for speed. Sign in with the same email and password on any other device to see the same data. <button class="btn ghost sm" data-act="logout" style="margin-left:4px">Log out</button></p>
         <div class="sep"></div>
         <div>
           <div style="font-weight:600;font-size:13px;margin-bottom:4px">Link a file on your disk ${fsOK ? '' : '<span class="tag">unsupported in this browser</span>'}</div>
@@ -1515,19 +1604,19 @@ VIEW.data = () => {
       </div></div>
 
       <div class="card"><div class="card-h"><h3>Share it with a friend</h3></div><div class="card-b stack">
-        <p class="small" style="margin:0">This file carries no data inside it — your applications live in your browser, not in the HTML. So sending the file to someone gives them a completely empty tracker of their own. They cannot see anything of yours, and you cannot see theirs.</p>
+        <p class="small" style="margin:0">This file carries no data of yours inside it — your applications live in the cloud under your account, not in the HTML. Sending the file to someone gives them the same app; they just create their own account (a different email) inside it. Their data stays completely private to their account, and yours stays private to yours.</p>
         <div>
           <div style="font-weight:600;font-size:13px;margin-bottom:4px">The easy way</div>
-          <p class="small muted" style="margin:0 0 8px">Send them <code>study-abroad-tracker.html</code> over WhatsApp, email or a Drive link. They save it and double-click it. Done — no install, no account, works offline.</p>
+          <p class="small muted" style="margin:0 0 8px">Send them <code>study-abroad-tracker.html</code> over WhatsApp, email or a Drive link. They save it, open it, and sign up with their own email. Done.</p>
           <button class="btn" data-act="share-copy">Download a fresh copy to send</button>
         </div>
         <div class="sep"></div>
         <div>
           <div style="font-weight:600;font-size:13px;margin-bottom:4px">The link way</div>
-          <p class="small muted" style="margin:0">Put the same file on any free static host — GitHub Pages, Netlify Drop, Cloudflare Pages — and share the URL instead. Same behaviour: each visitor's data stays in their own browser. Useful if you want to send one link to a group and push updates later.</p>
+          <p class="small muted" style="margin:0">Put the same file on any free static host — GitHub Pages, Netlify Drop, Cloudflare Pages — and share the URL instead. Same behaviour: everyone who opens the link signs into their own account. Useful if you want to send one link to a group and push updates later.</p>
         </div>
         <div class="sep"></div>
-        <p class="small muted" style="margin:0"><strong>One catch:</strong> two people using the same browser profile on the same computer will share the same data. If you and a sibling share a laptop, use different browser profiles, or link each person to their own data file above.</p>
+        <p class="small muted" style="margin:0"><strong>Shared computer?</strong> No problem — since data follows the account, not the browser, everyone on the same computer just signs out and signs back in as themselves.</p>
       </div></div>
 
       <div class="card"><div class="card-h"><h3>Danger zone</h3></div><div class="card-b">
@@ -1677,10 +1766,17 @@ const ACTIONS = {
   'link-file': () => linkFile(),
   'open-file': () => openFileLink(),
   'seed': () => seed(),
+  'logout': () => auth.signOut(),
   'share-copy': () => {
     const clone = document.documentElement.cloneNode(true);
     ['#view','#overlays','#nav'].forEach(s => { const el = clone.querySelector(s); if(el) el.innerHTML = ''; });
     const t = clone.querySelector('#toast'); if(t){ t.textContent = ''; t.className = ''; }
+    const se = clone.querySelector('#side-email'); if(se) se.textContent = '';
+    const ae = clone.querySelector('#auth-email'); if(ae) ae.removeAttribute('value');
+    const ap = clone.querySelector('#auth-password'); if(ap) ap.removeAttribute('value');
+    const boot = clone.querySelector('#boot-loading'); if(boot) boot.removeAttribute('style');
+    const authScr = clone.querySelector('#auth-screen'); if(authScr) authScr.removeAttribute('style');
+    const appEl = clone.querySelector('#app'); if(appEl) appEl.setAttribute('style', 'display:none');
     clone.setAttribute('data-theme', 'light');
     download('study-abroad-tracker.html', '<!doctype html>\n' + clone.outerHTML, 'text/html');
     toast('Clean copy downloaded — it contains none of your data');
@@ -1706,6 +1802,7 @@ $('#view').addEventListener('click', e => {
 });
 $('#theme-btn').addEventListener('click', toggleTheme);
 $('#menu-btn').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
+$('#logout-btn').addEventListener('click', () => auth.signOut());
 window.addEventListener('beforeunload', () => { if(dirty) save(); });
 document.addEventListener('keydown', e => {
   if(e.key === '/' && !/input|textarea|select/i.test(document.activeElement.tagName)){
@@ -1714,12 +1811,89 @@ document.addEventListener('keydown', e => {
   if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); exportJSON(); }
 });
 
+/* ================================== AUTH ================================= */
+let authMode = 'signin';
+const AUTH_ERRORS = {
+  'auth/wrong-password': 'Wrong password. Try again or reset it below.',
+  'auth/user-not-found': 'No account with that email — create one instead?',
+  'auth/invalid-credential': 'Email or password is incorrect.',
+  'auth/email-already-in-use': 'An account already exists with that email — sign in instead.',
+  'auth/weak-password': 'Password must be at least 6 characters.',
+  'auth/invalid-email': 'That email address looks invalid.',
+  'auth/too-many-requests': 'Too many attempts — wait a bit and try again.',
+  'auth/network-request-failed': 'Network error — check your connection.',
+};
+function authError(e){ return AUTH_ERRORS[e && e.code] || (e && e.message) || 'Something went wrong.'; }
+function setAuthMode(mode){
+  authMode = mode;
+  $('#auth-err').classList.remove('show');
+  if(mode === 'signup'){
+    $('#auth-title').textContent = 'Create an account';
+    $('#auth-sub').textContent = 'Your own private tracker, reachable from any device.';
+    $('#auth-submit').textContent = 'Create account';
+    $('#auth-switch').innerHTML = 'Already have an account? <a id="auth-toggle">Sign in</a>';
+    $('#auth-forgot-row').style.visibility = 'hidden';
+    $('#auth-password').setAttribute('autocomplete', 'new-password');
+  }else{
+    $('#auth-title').textContent = 'Sign in';
+    $('#auth-sub').textContent = 'Use your email and password to reach your own tracker from any device.';
+    $('#auth-submit').textContent = 'Sign in';
+    $('#auth-switch').innerHTML = 'New here? <a id="auth-toggle">Create an account</a>';
+    $('#auth-forgot-row').style.visibility = '';
+    $('#auth-password').setAttribute('autocomplete', 'current-password');
+  }
+  $('#auth-toggle').addEventListener('click', () => setAuthMode(mode === 'signup' ? 'signin' : 'signup'));
+}
+$('#auth-forgot').addEventListener('click', async () => {
+  const email = $('#auth-email').value.trim();
+  if(!email){ const err = $('#auth-err'); err.textContent = 'Enter your email above first.'; err.classList.add('show'); return; }
+  try{
+    await auth.sendPasswordResetEmail(email);
+    toast('Password reset email sent');
+  }catch(e){ const err = $('#auth-err'); err.textContent = authError(e); err.classList.add('show'); }
+});
+$('#auth-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = $('#auth-email').value.trim(), password = $('#auth-password').value;
+  const err = $('#auth-err'); err.classList.remove('show');
+  const btn = $('#auth-submit'); btn.disabled = true;
+  try{
+    if(authMode === 'signup') await auth.createUserWithEmailAndPassword(email, password);
+    else await auth.signInWithEmailAndPassword(email, password);
+  }catch(e){ err.textContent = authError(e); err.classList.add('show'); }
+  btn.disabled = false;
+});
+
+function showAuthScreen(){
+  $('#boot-loading').style.display = 'none';
+  $('#app').style.display = 'none';
+  $('#auth-screen').style.display = 'flex';
+}
+function showApp(){
+  $('#boot-loading').style.display = 'none';
+  $('#auth-screen').style.display = 'none';
+  $('#app').style.display = 'grid';
+  $('#side-email').textContent = currentUser.email;
+  applyTheme();
+  render();
+  setSaveStatus('', state.programs.length ? 'Saved' : 'Ready');
+  restoreHandle();
+}
+
 /* ================================= BOOT ================================== */
-load();
-applyTheme();
-render();
-setSaveStatus('', state.programs.length ? 'Saved locally' : 'Ready');
-restoreHandle();
+auth.onAuthStateChanged(async user => {
+  if(user){
+    currentUser = user;
+    await loadUserState(user.uid);
+    showApp();
+  }else{
+    currentUser = null;
+    fileHandle = null;
+    $('#auth-form').reset();
+    setAuthMode('signin');
+    showAuthScreen();
+  }
+});
 </script>
 </body>
 </html>
